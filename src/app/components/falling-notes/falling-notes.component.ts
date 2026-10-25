@@ -238,7 +238,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     }
     const point = this.localPoint(event);
     const geometry = this.currentGeometry();
-    if (!this.isInTouchBand(point.y, geometry)) {
+    if (!this.isInTouchArea(point.y, geometry)) {
       return;
     }
     const laneIndex = this.laneAt(point.x, geometry);
@@ -263,8 +263,8 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     const current = this.pointerLanes.get(event.pointerId);
     const point = this.localPoint(event);
     const geometry = this.currentGeometry();
-    const inBand = this.isInTouchBand(point.y, geometry);
-    const laneIndex = inBand ? this.laneAt(point.x, geometry) : null;
+    const inPlayfield = this.isInTouchArea(point.y, geometry);
+    const laneIndex = inPlayfield ? this.laneAt(point.x, geometry) : null;
     if (laneIndex === current) {
       return;
     }
@@ -908,9 +908,8 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
 
-  private isInTouchBand(y: number, geometry: ReturnType<typeof computeGeometry>): boolean {
-    const top = geometry.hitLineY - Math.max(36, this.viewport.height * 0.06);
-    return y >= top && y <= this.viewport.height;
+  private isInTouchArea(y: number, geometry: ReturnType<typeof computeGeometry>): boolean {
+    return y >= geometry.tineTopY && y <= this.viewport.height;
   }
 
   private laneAt(x: number, geometry: ReturnType<typeof computeGeometry>): number | null {

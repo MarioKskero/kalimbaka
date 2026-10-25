@@ -259,7 +259,7 @@ Orden:
 - El teclado manual usa el mapa puro de `src/core/kalimba/keyboard.ts`, se persiste en `kalimbapp.keyboard.v1` y comparte asignaciones por nota entre tamaños. Mantén reservadas `Esc`, espacio, flechas, modificadores y `F1–F12`.
 - `PlayerSettings.noteColors` define los colores por defecto por grado (1–7); `PlayerSettings.tineColors` guarda overrides por ID de tina y permite repetir el mismo color en varias teclas. Canvas, teclas y calibración resuelven `tineColors[tine.id] ?? noteColors[grado]`. El modo colores del reproductor edita la tina tocada con una paleta táctil y sliders HSL, sin input nativo.
 - La captura de teclado usa `event.code`, ignora repetición/modificadores/modales y limpia carriles activos al perder foco; el canvas solo dibuja el feedback recibido.
-- El canvas convierte punteros de la franja inferior en `lanePress`/`laneRelease` (multitáctil y glissando); el reproductor sintetiza la nota y une esos carriles con los del teclado en `manualLanes`. El audio y el estado viven en el reproductor, no en el canvas.
+- El canvas convierte punteros de toda la columna visible en `lanePress`/`laneRelease` (multitáctil y glissando); el reproductor sintetiza la nota y une esos carriles con los del teclado en `manualLanes`. El audio y el estado viven en el reproductor, no en el canvas.
 - No metas lógica de negocio en el canvas; solo dibujo/reloj.
 
 ## 12. Calibración y almacenamiento

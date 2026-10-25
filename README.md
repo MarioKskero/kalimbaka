@@ -315,7 +315,7 @@ La app informa de cada caso.
 - **Notas visibles**: 3–12 pulsos.
 - **Cuenta atrás al reanudar**: 0–4 pulsos.
 - **HUD superior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
-- **Línea de golpe al 86%** de la altura: debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la franja inferior (incluida la línea) para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez.
+- **Línea de golpe al 86%** de la altura: debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible (desde debajo de la cabecera hasta la tecla inferior) para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez.
 - **Wake Lock**: intenta mantener la pantalla encendida.
 
 Atajos:
