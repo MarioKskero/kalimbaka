@@ -1,0 +1,196 @@
+<div class="dialog-backdrop" (click)="close()">
+  <section
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="import-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="dialog__header">
+      <div>
+        <p class="eyebrow">Biblioteca</p>
+        <h2 id="import-title">Importar tab</h2>
+        <p class="dialog__subtitle">
+          Pega las notas de KalimbaTabs o carga un archivo <code>.txt</code> / <code>.json</code>.
+        </p>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
+    </header>
+
+    <div class="dialog__body">
+      <div class="dialog__left">
+        <div
+          class="dropzone"
+          [class.dropzone--over]="dragOver()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <input
+            #fileInput
+            class="dropzone__input"
+            type="file"
+            accept=".txt,.json,.kalimba,text/plain,application/json"
+            (change)="onFileInput($event)"
+          />
+          <div class="dropzone__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 16V4m0 0 4.5 4.5M12 4 7.5 8.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+          <div>
+            <p class="dropzone__title">
+              @if (fileName()) {
+                {{ fileName() }}
+              } @else {
+                Suelta un archivo o elige uno
+              }
+            </p>
+            <p class="dropzone__hint">También puedes pegar el tab abajo</p>
+          </div>
+          <button class="btn btn--soft" type="button" (click)="fileInput.click()">
+            Elegir archivo
+          </button>
+        </div>
+
+        <label class="field field--grow">
+          <span class="field__label">Tab</span>
+          <textarea
+            class="field__input field__input--mono"
+            rows="12"
+            spellcheck="false"
+            placeholder="3' 2' 1' 7 6 5 5 2' 3'&#10;(1 5) 2* 1* 5 7 7 1*"
+            [value]="text()"
+            (input)="onTextInput($event)"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="dialog__right">
+        <div class="preview">
+          <div class="preview__stats">
+            <div>
+              <span class="preview__value">{{ noteCount() }}</span>
+              <span class="preview__label">notas</span>
+            </div>
+            <div>
+              <span class="preview__value">{{ chordCount() }}</span>
+              <span class="preview__label">acordes</span>
+            </div>
+            <div>
+              <span
+                class="preview__value"
+                [class.preview__value--warning]="unsupported() > 0"
+              >
+                {{ unsupported() }}
+              </span>
+              <span class="preview__label">no caben</span>
+            </div>
+          </div>
+
+          @if (unsupported() > 0) {
+            <p class="notice notice--warning">
+              Hay {{ unsupported() }} notas que no existen en la kalimba de {{ size() }} teclas.
+              @if (recommended(); as suggested) {
+                Prueba con {{ suggested }} teclas.
+              } @else {
+                Este tab necesita más de 21 teclas.
+              }
+            </p>
+          } @else if (noteCount() > 0) {
+            <p class="notice notice--ok">El tab encaja en {{ size() }} teclas.</p>
+          }
+
+          @if (previewWarnings().length > 0) {
+            <ul class="warnings">
+              @for (warning of previewWarnings(); track $index) {
+                <li>{{ warning.message }}</li>
+              }
+            </ul>
+          }
+        </div>
+
+        <label class="field">
+          <span class="field__label">Título</span>
+          <input
+            class="field__input"
+            type="text"
+            autocomplete="off"
+            placeholder="Título del tab"
+            [value]="title()"
+            (input)="onTitleInput($event)"
+          />
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span class="field__label">Artista</span>
+            <input
+              class="field__input"
+              type="text"
+              autocomplete="off"
+              placeholder="Opcional"
+              [value]="artist()"
+              (input)="onArtistInput($event)"
+            />
+          </label>
+          <label class="field">
+            <span class="field__label">BPM</span>
+            <input
+              class="field__input"
+              type="number"
+              min="30"
+              max="240"
+              inputmode="numeric"
+              placeholder="80"
+              [value]="bpm() ?? ''"
+              (input)="onBpmInput($event)"
+            />
+          </label>
+        </div>
+
+        <div class="field">
+          <span class="field__label">Kalimba</span>
+          <div class="segmented">
+            @for (option of sizes; track option) {
+              <button
+                class="segmented__item"
+                type="button"
+                [class.segmented__item--active]="size() === option"
+                (click)="size.set(option)"
+              >
+                {{ option }} teclas
+              </button>
+            }
+          </div>
+        </div>
+
+        <p class="dialog__hint">
+          Los tabs de KalimbaTabs usan números 1-7, <code>'</code> para una octava arriba,
+          <code>”</code> para dos, y paréntesis para acordes.
+        </p>
+      </div>
+    </div>
+
+    @if (error()) {
+      <p class="dialog__error">{{ error() }}</p>
+    }
+
+    <footer class="dialog__footer">
+      <button class="btn btn--ghost" type="button" (click)="close()">Cancelar</button>
+      <button class="btn btn--primary" type="button" [disabled]="!canSubmit()" (click)="submit()">
+        Guardar tab
+      </button>
+    </footer>
+  </section>
+</div>

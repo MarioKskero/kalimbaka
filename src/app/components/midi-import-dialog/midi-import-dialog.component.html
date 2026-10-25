@@ -1,0 +1,279 @@
+<div class="dialog-backdrop" (click)="close()">
+  <section
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="midi-import-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="dialog__header">
+      <div>
+        <p class="eyebrow">{{ mode() === 'configure' ? 'Configurar MIDI' : 'Importar MIDI' }}</p>
+        <h2 id="midi-import-title">
+          {{
+            mode() === 'configure'
+              ? 'Elige pista y configuración'
+              : 'Elige la pista que quieres tocar'
+          }}
+        </h2>
+        <p class="dialog__subtitle">{{ file().name }}</p>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="m6 6 12 12M18 6 6 18"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+    </header>
+
+    @if (loading()) {
+      <div class="state">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Leyendo el MIDI…</p>
+      </div>
+    } @else if (error()) {
+      <div class="state state--error">
+        <p>{{ error() }}</p>
+        <button class="btn btn--ghost" type="button" (click)="close()">Cerrar</button>
+      </div>
+    } @else {
+      <div class="dialog__body">
+        <div class="dialog__left">
+          @if (showMetadata()) {
+            <div class="field-row">
+              <label class="field">
+                <span class="field__label">Título</span>
+                <input
+                  class="field__input"
+                  type="text"
+                  autocomplete="off"
+                  [value]="title()"
+                  (input)="onTitleInput($event)"
+                />
+              </label>
+              <label class="field">
+                <span class="field__label">Artista</span>
+                <input
+                  class="field__input"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Opcional"
+                  [value]="artist()"
+                  (input)="onArtistInput($event)"
+                />
+              </label>
+            </div>
+          }
+
+          <div class="field-row">
+            <label class="field">
+              <span class="field__label">{{
+                mode() === 'configure' ? 'BPM de reproducción' : 'BPM inicial'
+              }}</span>
+              <input
+                class="field__input"
+                type="number"
+                min="30"
+                max="240"
+                inputmode="numeric"
+                [value]="bpm()"
+                (input)="onBpmInput($event)"
+              />
+            </label>
+            <div class="field">
+              <span class="field__label">Kalimba</span>
+              <div class="segmented">
+                @for (option of sizes; track option) {
+                  <button
+                    class="segmented__item"
+                    type="button"
+                    [class.segmented__item--active]="size() === option"
+                    (click)="setSize(option)"
+                  >
+                    {{ option }} teclas
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="tracks">
+            <div class="tracks__head">
+              <span class="field__label">Pistas del MIDI</span>
+              <span class="tag">{{ parts().length }} melódicas</span>
+            </div>
+
+            @if (ignoredDrums() > 0) {
+              <p class="tracks__hint">
+                Se {{ ignoredDrums() === 1 ? 'ignora' : 'ignoran' }} {{ ignoredDrums() }}
+                {{ ignoredDrums() === 1 ? 'pista' : 'pistas' }} de percusión.
+              </p>
+            }
+
+            @for (part of parts(); track part.id) {
+              <button
+                class="track"
+                type="button"
+                [class.track--active]="part.id === selectedPartId()"
+                (click)="selectPart(part.id)"
+              >
+                <div class="track__main">
+                  <strong>{{ part.name }}</strong>
+                  <span>{{ part.instrument }} · {{ channelLabel(part) }}</span>
+                </div>
+                <div class="track__meta">
+                  <span class="tag">{{ part.noteCount }} notas</span>
+                  <span class="tag">{{ partRange(part) }}</span>
+                  @if (part.polyphonyRatio > 0.1) {
+                    <span class="tag">Con acordes</span>
+                  }
+                  @if (part.id === suggestedPartId()) {
+                    <span class="tag tag--melody">Melodía probable</span>
+                  }
+                </div>
+              </button>
+            } @empty {
+              <p class="tracks__empty">No se han encontrado pistas melódicas.</p>
+            }
+          </div>
+        </div>
+
+        <div class="dialog__right">
+          @if (selectedPart()) {
+            <div class="preview">
+              <div class="preview__title">
+                <span class="field__label">Vista previa</span>
+                <strong>{{ playablePercent() }}%</strong>
+              </div>
+              <div class="preview__bar">
+                <span [style.width.%]="playablePercent()"></span>
+              </div>
+
+              <div class="preview__stats">
+                <div>
+                  <strong>{{ stats()?.totalNotes ?? 0 }}</strong>
+                  <span>notas</span>
+                </div>
+                <div>
+                  <strong>{{ stats()?.chordCount ?? 0 }}</strong>
+                  <span>acordes</span>
+                </div>
+                <div>
+                  <strong [class.warn]="(stats()?.unsupportedCount ?? 0) > 0">
+                    {{ stats()?.unsupportedCount ?? 0 }}
+                  </strong>
+                  <span>omitidas</span>
+                </div>
+                <div>
+                  <strong>{{ durationLabel() }}</strong>
+                  <span>duración</span>
+                </div>
+              </div>
+
+              @if ((stats()?.unsupportedCount ?? 0) > 0) {
+                <p class="notice notice--warning">
+                  Se omitirán {{ stats()?.unsupportedCount }} notas en la kalimba de
+                  {{ size() }} teclas. Activa las opciones de reducción o prueba otra transposición.
+                </p>
+                <div class="unsupported-list">
+                  @for (label of unsupportedPreview(); track label) {
+                    <span class="tag">{{ label }}</span>
+                  }
+                </div>
+              } @else {
+                <p class="notice notice--ok">No se omite ninguna nota en {{ size() }} teclas.</p>
+              }
+            </div>
+
+            <div class="reduction">
+              <div class="reduction__head">
+                <span class="field__label">Reducción</span>
+                @if (stats(); as result) {
+                  <span class="tag">
+                    {{ result.exactCount }} exactas · {{ result.foldedCount }} octavas ·
+                    {{ result.snappedCount }} tono · {{ result.unsupportedCount }} omitidas
+                    @if (result.removedChordNotes > 0) {
+                      · {{ result.removedChordNotes }} de acorde
+                    }
+                  </span>
+                }
+              </div>
+
+              <label class="reduction__option">
+                <input type="checkbox" [checked]="foldOctaves()" (change)="toggleFoldOctaves()" />
+                Ajustar octavas
+              </label>
+
+              <label class="reduction__option">
+                <input
+                  type="checkbox"
+                  [checked]="snapChromatic()"
+                  (change)="toggleSnapChromatic()"
+                />
+                Ajustar cromatismos
+              </label>
+
+              <label class="reduction__option">
+                <input type="checkbox" [checked]="removeChords()" (change)="toggleRemoveChords()" />
+                Quitar acordes (solo la nota más aguda)
+              </label>
+
+              <p class="reduction__hint">
+                Con las dos primeras activas se evita perder notas, aunque algunas cambian de octava
+                o de semitono. La tercera convierte los acordes en una sola nota.
+              </p>
+            </div>
+
+            <div class="transpose">
+              <div class="transpose__head">
+                <span class="field__label">Transposición</span>
+                <strong>{{ transpositionLabel() }}</strong>
+              </div>
+              <div class="transpose__controls">
+                <button
+                  class="step-btn"
+                  type="button"
+                  aria-label="Bajar un semitono"
+                  (click)="nudgeTransposition(-1)"
+                >
+                  −
+                </button>
+                <button
+                  class="step-btn"
+                  type="button"
+                  aria-label="Subir un semitono"
+                  (click)="nudgeTransposition(1)"
+                >
+                  +
+                </button>
+                <button class="btn btn--soft" type="button" (click)="useSuggested()">
+                  Auto ({{ suggestion()?.transposition ?? 0 }})
+                </button>
+              </div>
+              <p class="transpose__hint">
+                Ajusta los semitonos para que la melodía encaje en Do mayor y en el rango de la
+                kalimba. Se calcula con <strong>Auto</strong> al elegir pista; puedes ajustarla a
+                mano o volver a pedir la sugerencia.
+              </p>
+            </div>
+          } @else {
+            <div class="state">
+              <p>Selecciona una pista para ver la vista previa.</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <footer class="dialog__footer">
+        <button class="btn btn--ghost" type="button" (click)="close()">Cancelar</button>
+        <button class="btn btn--primary" type="button" [disabled]="!canSubmit()" (click)="submit()">
+          {{ submitLabel() }}
+        </button>
+      </footer>
+    }
+  </section>
+</div>

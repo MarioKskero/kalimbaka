@@ -1,0 +1,68 @@
+<div class="calibration">
+  <div
+    class="calibration__surface"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointercancel)="onPointerUp($event)"
+    (wheel)="onWheel($event)"
+  >
+    <div class="calibration__hit-line" [style.top.px]="geometry().hitLineY"></div>
+
+    @for (lane of geometry().lanes; track lane.laneIndex) {
+      <div
+        class="calibration__lane"
+        [style.left.px]="lane.x"
+        [style.width.px]="lane.width"
+        [style.--note-color]="colorFor(lane.degree)"
+      >
+        <div
+          class="calibration__tine"
+          [style.top.px]="geometry().tineTopY"
+          [style.height.px]="geometry().hitLineY - geometry().tineTopY"
+        ></div>
+        <div class="calibration__target" [style.top.px]="geometry().hitLineY"></div>
+        <span class="calibration__target-label" [style.top.px]="geometry().hitLineY">
+          {{ lane.tineId }}
+        </span>
+        <span class="calibration__top-label" [style.top.px]="geometry().tineTopY + 10">
+          {{ lane.tineId }}
+        </span>
+      </div>
+    }
+  </div>
+
+  <header class="calibration__header">
+    <div class="calibration__header-top">
+      <div>
+        <p class="eyebrow">Calibración · {{ layout().size }} teclas</p>
+        <h2>Alinea los carriles con tu kalimba</h2>
+        <p>
+          Coloca el móvil frente a la kalimba. Ajusta el ancho con <strong>− / +</strong> y arrastra
+          para que cada carril quede sobre su tecla.
+        </p>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar calibración" (click)="cancel()">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="calibration__controls">
+      <div class="calibration__scale">
+        <button class="cal-btn" type="button" aria-label="Reducir tamaño" (click)="nudge(-0.02)">
+          −
+        </button>
+        <span class="calibration__percent">{{ scalePercent() }}%</span>
+        <button class="cal-btn" type="button" aria-label="Aumentar tamaño" (click)="nudge(0.02)">
+          +
+        </button>
+      </div>
+
+      <button class="btn btn--ghost" type="button" (click)="reset()">Centrar</button>
+      <button class="btn btn--soft" type="button" (click)="cancel()">Cancelar</button>
+      <button class="btn btn--primary" type="button" (click)="save()">Guardar calibración</button>
+    </div>
+  </header>
+</div>

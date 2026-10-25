@@ -1,0 +1,126 @@
+{
+  "songs": [
+    {
+      "id": "monkey-island-midi",
+      "title": "Monkey Island Theme (MIDI)",
+      "artist": "Xitete el Grande",
+      "midi": "monkeyisland.mid"
+    },
+    {
+      "id": "ode-to-joy",
+      "title": "Ode to Joy",
+      "artist": "Ludwig van Beethoven",
+      "bpm": 92,
+      "kalimba": 8,
+      "file": "ode-to-joy.txt"
+    },
+    {
+      "id": "hollow-knight-city-of-tears",
+      "title": "Hollow Knight - City of Tears",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - City of Tears.mid"
+    },
+    {
+      "id": "hollow-knight-dirtmouth",
+      "title": "Hollow Knight - Dirtmouth",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Dirtmouth.mid"
+    },
+    {
+      "id": "hollow-knight-enter-hallownest",
+      "title": "Hollow Knight - Enter Hallownest",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Enter Hallownest.mid"
+    },
+    {
+      "id": "hollow-knight-greenpath",
+      "title": "Hollow Knight - Greenpath",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Greenpath.mid"
+    },
+    {
+      "id": "hollow-knight-main-theme",
+      "title": "Hollow Knight - Main Theme",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Main Theme.mid"
+    },
+    {
+      "id": "hollow-knight-mantis-lords",
+      "title": "Hollow Knight - Mantis Lords",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Mantis Lords.mid"
+    },
+    {
+      "id": "hollow-knight-nosk",
+      "title": "Hollow Knight - Nosk",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Nosk.mid"
+    },
+    {
+      "id": "hollow-knight-queens-garden",
+      "title": "Hollow Knight - Queen's Garden",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Queen's Garden.mid"
+    },
+    {
+      "id": "hollow-knight-reflection",
+      "title": "Hollow Knight - Reflection",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Reflection.mid"
+    },
+    {
+      "id": "hollow-knight-resting-grounds",
+      "title": "Hollow Knight - Resting Grounds",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Resting Grounds.mid"
+    },
+    {
+      "id": "hollow-knight-soul-sanctum",
+      "title": "Hollow Knight - Soul Sanctum",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - Soul Sanctum.mid"
+    },
+    {
+      "id": "hollow-knight-the-white-lady",
+      "title": "Hollow Knight - The White Lady",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - The White Lady.mid"
+    },
+    {
+      "id": "hollow-knight-white-palace",
+      "title": "Hollow Knight - White Palace",
+      "artist": "Xitetin",
+      "midi": "Hollow Knight/Hollow Knight - White Palace.mid"
+    },
+    {
+      "id": "imagine-dragons-believer",
+      "title": "Imagine Dragons - Believer",
+      "artist": "Imagine Dragons",
+      "midi": "Imagine Dragons/Imagine Dragons - Believer.mid"
+    },
+    {
+      "id": "imagine-dragons-demons",
+      "title": "Imagine Dragons - Demons",
+      "artist": "Imagine Dragons",
+      "midi": "Imagine Dragons/Imagine Dragons - Demons.mid"
+    },
+    {
+      "id": "imagine-dragons-enemy",
+      "title": "Imagine Dragons - Enemy",
+      "artist": "Imagine Dragons",
+      "midi": "Imagine Dragons/Imagine Dragons - Enemy.mid"
+    },
+    {
+      "id": "imagine-dragons-radioactive",
+      "title": "Imagine Dragons - Radioactive",
+      "artist": "Imagine Dragons",
+      "midi": "Imagine Dragons/Imagine Dragons - Radioactive.mid"
+    },
+    {
+      "id": "imagine-dragons-radioactive-2",
+      "title": "Imagine Dragons - Radioactive 2",
+      "artist": "Imagine Dragons",
+      "midi": "Imagine Dragons/Imagine Dragons - Radioactive 2.mid"
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.song-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(34, 211, 238, 0.08), transparent 45%),
+    var(--panel);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.song-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(34, 211, 238, 0.35);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+}
+
+.song-card--warning {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.song-card--built-in::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), transparent 35%);
+}
+
+.song-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.song-card__icon {
+  display: grid;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(34, 211, 238, 0.16), rgba(99, 102, 241, 0.08));
+  color: var(--cyan);
+}
+
+.song-card__icon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.song-card__title {
+  min-width: 0;
+}
+
+.song-card__name-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.song-card__title h3 {
+  margin: 0;
+  font-size: 1.04rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.song-card__title p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.83rem;
+  overflow-wrap: anywhere;
+}
+
+.song-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.song-card__fit {
+  margin: auto 0 0;
+  padding-top: 4px;
+  color: var(--green);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.song-card__fit--warning {
+  color: var(--amber);
+}
+
+.song-card__actions {
+  display: flex;
+  gap: 9px;
+}
+
+.song-card__actions .btn {
+  flex: 1;
+}
+
+.song-card__view {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+}
+
+.tag--built-in {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+
+.tag--midi {
+  border-color: rgba(96, 165, 250, 0.3);
+  background: rgba(96, 165, 250, 0.12);
+  color: #93c5fd;
+}

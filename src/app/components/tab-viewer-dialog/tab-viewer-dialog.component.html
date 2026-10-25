@@ -1,0 +1,175 @@
+<div class="dialog-backdrop" (click)="close()">
+  <section
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tab-viewer-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="dialog__header">
+      <div>
+        <p class="eyebrow">{{ isMidi() ? 'Notas MIDI' : 'Tab' }}</p>
+        <h2 id="tab-viewer-title">{{ song().title }}</h2>
+        <p class="dialog__subtitle">
+          {{ song().artist || 'Artista desconocido' }} · {{ song().bpm }} BPM ·
+          {{ song().kalimbaSize }} teclas
+        </p>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
+    </header>
+
+    <div class="dialog__meta">
+      <span class="tag">{{ isMidi() ? 'MIDI' : 'Texto' }}</span>
+      @if (song().midi; as midi) {
+        @if (midi.trackName) {
+          <span class="tag">{{ midi.trackName }}</span>
+        }
+        @if (midi.instrument) {
+          <span class="tag">{{ midi.instrument }}</span>
+        }
+        <span class="tag">{{ midi.notes.length }} notas</span>
+        @if (midiStats(); as stats) {
+          <span class="tag">{{ stats.exactCount }} exactas</span>
+          @if (stats.foldedCount > 0) {
+            <span class="tag">{{ stats.foldedCount }} octavas</span>
+          }
+          @if (stats.snappedCount > 0) {
+            <span class="tag">{{ stats.snappedCount }} ajustadas</span>
+          }
+          @if (stats.unsupportedCount > 0) {
+            <span class="tag tag--warning">{{ stats.unsupportedCount }} omitidas</span>
+          }
+          @if (stats.removedChordNotes > 0) {
+            <span class="tag">{{ stats.removedChordNotes }} de acorde</span>
+          }
+        }
+      } @else {
+        <span class="tag">Tab numérico</span>
+      }
+    </div>
+
+    <div class="dialog__body">
+      <pre class="tab-view">{{ text() }}</pre>
+    </div>
+
+    @if (isMidi() && exportOpen()) {
+      <div class="export-panel">
+        <div class="export-panel__head">
+          <span class="field__label">Exportar tab aproximado</span>
+          @if (exportResult(); as result) {
+            <span class="tag">{{ result.stats.steps }} pasos</span>
+          }
+        </div>
+
+        <div class="export-panel__row">
+          <div class="field">
+            <span class="field__label">Rejilla</span>
+            <div class="segmented">
+              <button
+                class="segmented__item"
+                type="button"
+                [class.segmented__item--active]="grid() === 1"
+                (click)="setGrid(1)"
+              >
+                1/4
+              </button>
+              <button
+                class="segmented__item"
+                type="button"
+                [class.segmented__item--active]="grid() === 2"
+                (click)="setGrid(2)"
+              >
+                1/8
+              </button>
+              <button
+                class="segmented__item"
+                type="button"
+                [class.segmented__item--active]="grid() === 4"
+                (click)="setGrid(4)"
+              >
+                1/16
+              </button>
+            </div>
+          </div>
+
+          <label class="export-check">
+            <input
+              type="checkbox"
+              [checked]="includeRests()"
+              (change)="onRestsChange($event)"
+            />
+            Incluir silencios
+          </label>
+        </div>
+
+        @if (!includeRests()) {
+          <p class="export-notice">Sin silencios el tab se compacta y cambia el ritmo.</p>
+        }
+
+        @if (exportResult(); as result) {
+          <div class="export-stats">
+            <span class="tag">{{ result.stats.noteSteps }} con notas</span>
+            <span class="tag">{{ result.stats.restSteps }} silencios</span>
+            <span class="tag">{{ result.stats.chordSteps }} acordes</span>
+            <span class="tag">{{ result.stats.playableNotes }} notas OK</span>
+            @if (result.stats.removedChordNotes > 0) {
+              <span class="tag">{{ result.stats.removedChordNotes }} de acorde quitadas</span>
+            }
+            @if (result.stats.omittedNotes > 0) {
+              <span class="tag tag--warning">{{ result.stats.omittedNotes }} omitidas</span>
+            }
+            <span class="tag">{{ formatTime(result.stats.durationMs) }}</span>
+          </div>
+
+          @if (result.stats.omittedNotes > 0) {
+            <p class="export-notice">
+              Se omitirán {{ result.stats.omittedNotes }} notas que no caben en la kalimba.
+              @if (result.omittedLabels.length > 0) {
+                ({{ result.omittedLabels.slice(0, 8).join(', ') }}{{ result.omittedLabels.length > 8 ? '…' : '' }})
+              }
+            </p>
+          }
+
+          @if (result.stats.noteSteps === 0) {
+            <p class="export-notice">No hay notas que quepan en esta kalimba.</p>
+          }
+
+          <div class="export-actions">
+            <button
+              class="btn btn--ghost"
+              type="button"
+              [disabled]="result.stats.noteSteps === 0"
+              (click)="download()"
+            >
+              Descargar tab .txt
+            </button>
+            <button
+              class="btn btn--primary"
+              type="button"
+              [disabled]="result.stats.noteSteps === 0"
+              (click)="addToLibrary()"
+            >
+              Añadir a biblioteca
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    <footer class="dialog__footer">
+      @if (isMidi()) {
+        <button class="btn btn--soft" type="button" (click)="toggleExport()">
+          {{ exportOpen() ? 'Ocultar exportación' : 'Exportar tab' }}
+        </button>
+      }
+      <button class="btn btn--ghost" type="button" (click)="copy()">
+        {{ copied() ? 'Copiado' : 'Copiar' }}
+      </button>
+      <button class="btn btn--primary" type="button" (click)="close()">Cerrar</button>
+    </footer>
+  </section>
+</div>

@@ -1,0 +1,713 @@
+<div class="player">
+  @if (song(); as song) {
+    @if (song.midiSource && !song.midi) {
+      <div class="player-message">
+        @if (midiConfigError()) {
+          <h1>No se pudo abrir el MIDI</h1>
+          <p>{{ midiConfigError() }}</p>
+          <button class="btn btn--primary" type="button" (click)="back()">Volver</button>
+        } @else {
+          <span class="spinner" aria-hidden="true"></span>
+          <p>Configurando MIDI…</p>
+        }
+      </div>
+    } @else if (timeline(); as timeline) {
+      <app-falling-notes
+        [timeline]="timeline"
+        [layout]="layout()"
+        [calibration]="currentCalibration()"
+        [beatsVisible]="beatsVisible()"
+        [loop]="loop()"
+        [keyLabels]="keyboardLabels()"
+        [manualLanes]="pressedLanes()"
+        (tick)="onTick($event)"
+        (beat)="onBeat($event)"
+        (noteHit)="onNoteHit($event)"
+        (finished)="onFinished()"
+      />
+
+      <header class="player-top">
+        <div class="player-top__row">
+          <div class="player-top__left">
+            <button class="icon-btn" type="button" aria-label="Volver" (click)="requestBack()">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="m14.5 5-7 7 7 7"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+
+            <div class="player-top__title">
+              <p class="eyebrow">{{ size() }} teclas · {{ totalNotes() }} notas</p>
+              <h1>{{ song.title }}</h1>
+              <p>{{ song.artist || 'Artista desconocido' }}</p>
+            </div>
+          </div>
+
+          <div class="player-top__right">
+            <span class="top-chip">{{ bpm() }} BPM</span>
+            <span class="top-chip" [class.top-chip--on]="metronome()">Metrónomo</span>
+            <span class="top-chip" [class.top-chip--on]="loop()">Loop</span>
+            <button
+              class="seek-btn"
+              type="button"
+              [disabled]="!canSeek()"
+              aria-label="Retroceder 10 segundos"
+              title="Retroceder 10 s"
+              (click)="seekBy(-10000)"
+            >
+              −10s
+            </button>
+            <button
+              class="seek-btn"
+              type="button"
+              [disabled]="!canSeek()"
+              aria-label="Avanzar 10 segundos"
+              title="Avanzar 10 s"
+              (click)="seekBy(10000)"
+            >
+              +10s
+            </button>
+            <button
+              class="icon-btn icon-btn--sound"
+              type="button"
+              [class.icon-btn--active]="noteSound()"
+              [attr.aria-pressed]="noteSound()"
+              [attr.aria-label]="
+                noteSound() ? 'Desactivar sonido de notas' : 'Activar sonido de notas'
+              "
+              [title]="noteSound() ? 'Sonido de notas: on' : 'Sonido de notas: off'"
+              (click)="toggleNoteSound()"
+            >
+              @if (noteSound()) {
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M4 9v6h4l5 4V5L8 9H4Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M4 9v6h4l5 4V5L8 9H4Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="m16 9 5 6M21 9l-5 6"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              }
+            </button>
+            <button
+              class="icon-btn"
+              type="button"
+              aria-label="Abrir ajustes y pausar"
+              title="Ajustes y pausa"
+              (click)="openSettingsMenu()"
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                />
+                <path
+                  d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.9 1.9-.06-.06A1.7 1.7 0 0 0 16 19.4a1.7 1.7 0 0 0-1 .95l-.03.08h-2.7l-.03-.08a1.7 1.7 0 0 0-1-.95 1.7 1.7 0 0 0-1.88.34l-.06.06-1.9-1.9.06-.06A1.7 1.7 0 0 0 7.8 16a1.7 1.7 0 0 0-.95-1l-.08-.03v-2.7l.08-.03a1.7 1.7 0 0 0 .95-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.9-1.9.06.06A1.7 1.7 0 0 0 11 7.8a1.7 1.7 0 0 0 1-.95l.03-.08h2.7l.03.08a1.7 1.7 0 0 0 1 .95 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.9 1.9-.06.06A1.7 1.7 0 0 0 19.2 11c.15.4.5.8.95 1l.08.03v2.7l-.08.03c-.45.2-.8.6-.95 1Z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              class="icon-btn icon-btn--play"
+              type="button"
+              [attr.aria-label]="isPlaying() ? 'Pausar' : 'Reproducir'"
+              (click)="isPlaying() ? pause() : primaryAction()"
+            >
+              @if (isPlaying()) {
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <rect x="7" y="5" width="4" height="14" rx="1" />
+                  <rect x="14" y="5" width="4" height="14" rx="1" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+                </svg>
+              }
+            </button>
+          </div>
+        </div>
+
+        <div class="player-top__hud">
+          <div class="hud-card">
+            <span class="hud-label">Ahora</span>
+            <strong [class.hud-value--empty]="!currentLabel()">{{ currentLabel() }}</strong>
+          </div>
+
+          <div class="progress-area">
+            <div class="progress-bar">
+              <span [style.width.%]="progressPercent()"></span>
+            </div>
+            <div class="progress-time">
+              <span>{{ elapsedLabel() }}</span>
+              <span>{{ totalLabel() }}</span>
+            </div>
+          </div>
+
+          <div class="hud-card hud-card--right">
+            <span class="hud-label">Siguiente</span>
+            <strong [class.hud-value--empty]="!nextLabel()">{{ nextLabel() }}</strong>
+          </div>
+        </div>
+
+        @if (unsupportedCount() > 0) {
+          <div class="player-warning">
+            <span>
+              {{ unsupportedCount() }} notas no existen en la kalimba de {{ size() }} teclas. Se
+              omitirán en la guía.
+            </span>
+            @if (song.midiSource) {
+              <button class="btn btn--soft" type="button" (click)="openMidiConfig()">
+                Configurar MIDI
+              </button>
+            } @else if (canSwitchSize()) {
+              <button class="btn btn--soft" type="button" (click)="switchToRecommended()">
+                Cambiar a {{ recommended() }} teclas
+              </button>
+            }
+          </div>
+        }
+      </header>
+
+      @if (isCountingIn()) {
+        <div class="count-in" aria-live="polite">
+          <span>{{ countInBeats() }}</span>
+          <p>Prepárate</p>
+        </div>
+      }
+
+      @if (resumeCountdown() > 0) {
+        <div class="count-in resume-count-in" aria-live="polite">
+          <span>{{ resumeCountdown() }}</span>
+          <p>Reanudando</p>
+        </div>
+      }
+
+      @if (showPause()) {
+        <div class="player-overlay">
+          <section
+            class="player-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
+          >
+            @if (showSettings()) {
+              <header class="player-modal__header">
+                <div>
+                  <p class="eyebrow">Ajustes de reproducción</p>
+                  <h2 id="modal-title">
+                    @if (showKeyboardMapping()) {
+                      Configurar teclado
+                    } @else {
+                      Afina la práctica
+                    }
+                  </h2>
+                </div>
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-label="Cerrar ajustes"
+                  (click)="closeSettings()"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="m6 6 12 12M18 6 6 18"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+              </header>
+
+              @if (showKeyboardMapping()) {
+                <div class="keyboard-editor">
+                  <p class="settings__hint">
+                    Asigna una tecla a cada nota. Se guarda para todos los tamaños de kalimba. Esc,
+                    flechas, modificadores y F1–F12 están reservados.
+                  </p>
+                  <div class="keyboard-editor__list">
+                    @for (binding of keyboardBindings(); track binding.tineId) {
+                      <div
+                        class="keyboard-editor__row"
+                        [class.keyboard-editor__row--active]="
+                          mappingCaptureTine() === binding.tineId
+                        "
+                      >
+                        <strong>{{ binding.tineId }}</strong>
+                        <kbd>{{ binding.label }}</kbd>
+                        @if (mappingCaptureTine() === binding.tineId) {
+                          <span class="keyboard-editor__waiting">Pulsa una tecla…</span>
+                        } @else {
+                          <button
+                            class="btn btn--ghost btn--small"
+                            type="button"
+                            (click)="beginMapping(binding.tineId)"
+                          >
+                            Cambiar
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                  @if (mappingMessage()) {
+                    <p class="keyboard-editor__message">{{ mappingMessage() }}</p>
+                  }
+                  <div class="keyboard-editor__actions">
+                    <button class="btn btn--ghost" type="button" (click)="resetKeyboardMapping()">
+                      Restablecer mapa
+                    </button>
+                    <button class="btn btn--primary" type="button" (click)="closeKeyboardMapping()">
+                      Volver a ajustes
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="settings">
+                  @if (song.midi) {
+                    <div class="field">
+                      <span class="field__label">Kalimba</span>
+                      <p class="settings__hint">
+                        {{ size() }} teclas configuradas para esta canción.
+                        @if (song.midiSource) {
+                          Cámbialo desde “Listo para tocar” con
+                          <strong>Configurar MIDI</strong>.
+                        } @else {
+                          Vuelve a importar el MIDI para cambiar la configuración.
+                        }
+                      </p>
+                    </div>
+                  } @else {
+                    <div class="field">
+                      <span class="field__label">Kalimba</span>
+                      <div class="segmented">
+                        @for (option of sizes; track option) {
+                          <button
+                            class="segmented__item"
+                            type="button"
+                            [class.segmented__item--active]="size() === option"
+                            (click)="setSize(option)"
+                          >
+                            {{ option }} teclas
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <div class="setting">
+                    <div class="setting__row">
+                      <span>Tempo</span>
+                      <div class="bpm-stepper">
+                        <button
+                          class="step-btn"
+                          type="button"
+                          aria-label="Bajar tempo"
+                          (click)="decreaseBpm()"
+                        >
+                          −
+                        </button>
+                        <strong>{{ bpm() }} BPM</strong>
+                        <button
+                          class="step-btn"
+                          type="button"
+                          aria-label="Subir tempo"
+                          (click)="increaseBpm()"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      class="range"
+                      type="range"
+                      min="30"
+                      max="240"
+                      step="1"
+                      [value]="bpm()"
+                      (input)="onBpmInput($event)"
+                      aria-label="Tempo"
+                    />
+                  </div>
+
+                  <div class="setting">
+                    <div class="setting__row">
+                      <span>Articulación entre notas</span>
+                      <strong>{{ gapPercent() }}%</strong>
+                    </div>
+                    <input
+                      class="range"
+                      type="range"
+                      min="0"
+                      max="40"
+                      step="1"
+                      [value]="gapPercent()"
+                      (input)="onGapInput($event)"
+                      aria-label="Articulación entre notas"
+                    />
+                    <p class="settings__hint settings__hint--tight">
+                      No cambia el tempo; solo acorta la duración de la nota.
+                    </p>
+                  </div>
+
+                  <div class="setting">
+                    <div class="setting__row">
+                      <span>Notas visibles</span>
+                      <strong>{{ beatsVisible() }} pulsos</strong>
+                    </div>
+                    <input
+                      class="range"
+                      type="range"
+                      min="3"
+                      max="12"
+                      step="1"
+                      [value]="beatsVisible()"
+                      (input)="onBeatsInput($event)"
+                      aria-label="Notas visibles"
+                    />
+                  </div>
+
+                  <div class="setting">
+                    <div class="setting__row">
+                      <span>Cuenta atrás al reanudar</span>
+                      <strong>{{ resumeCountInBeats() }} pulsos</strong>
+                    </div>
+                    <input
+                      class="range"
+                      type="range"
+                      min="0"
+                      max="4"
+                      step="1"
+                      [value]="resumeCountInBeats()"
+                      (input)="onResumeCountInInput($event)"
+                      aria-label="Cuenta atrás al reanudar"
+                    />
+                    <p class="settings__hint settings__hint--tight">0 = reanudar al instante.</p>
+                  </div>
+
+                  <button
+                    class="toggle-row"
+                    type="button"
+                    [class.toggle-row--on]="metronome()"
+                    (click)="toggleMetronome()"
+                  >
+                    <span>Metrónomo</span>
+                    <span class="toggle-row__switch" aria-hidden="true"></span>
+                  </button>
+
+                  <button
+                    class="toggle-row"
+                    [class.toggle-row--on]="keyboard()"
+                    type="button"
+                    (click)="toggleKeyboard()"
+                  >
+                    <span>Tocar con teclado</span>
+                    <span class="toggle-row__switch" aria-hidden="true"></span>
+                  </button>
+
+                  <section class="keyboard-mapping">
+                    <div class="setting__row">
+                      <span>Mapa de teclas</span>
+                      <button
+                        class="btn btn--ghost btn--small"
+                        type="button"
+                        (click)="openKeyboardMapping()"
+                      >
+                        Configurar
+                      </button>
+                    </div>
+                    <p class="settings__hint settings__hint--tight">
+                      Letras, números y puntuación. No se pueden usar Esc, flechas ni F1–F12.
+                    </p>
+                  </section>
+
+                  <button
+                    class="toggle-row"
+                    type="button"
+                    [class.toggle-row--on]="noteSound()"
+                    (click)="toggleNoteSound()"
+                  >
+                    <span>Sonido de notas</span>
+                    <span class="toggle-row__switch" aria-hidden="true"></span>
+                  </button>
+
+                  <button
+                    class="toggle-row"
+                    type="button"
+                    [class.toggle-row--on]="loop()"
+                    (click)="toggleLoop()"
+                  >
+                    <span>Repetir en bucle</span>
+                    <span class="toggle-row__switch" aria-hidden="true"></span>
+                  </button>
+
+                  <p class="settings__hint">
+                    Cambiar el tamaño, el tempo o la pausa reinicia la canción. Activa el sonido de
+                    notas para escuchar la melodía y graduar el tempo. La calibración se guarda por
+                    cada tamaño de kalimba.
+                  </p>
+                </div>
+              }
+
+              @if (!showKeyboardMapping()) {
+                <footer class="player-modal__footer">
+                  <button class="btn btn--ghost" type="button" (click)="openCalibration()">
+                    Calibrar pantalla
+                  </button>
+                  <button class="btn btn--primary" type="button" (click)="closeSettings()">
+                    Volver
+                  </button>
+                </footer>
+              }
+            } @else {
+              <div class="player-modal__hero">
+                <p class="eyebrow">
+                  @if (isFinished()) {
+                    Fin de la canción
+                  } @else if (isPaused()) {
+                    En pausa
+                  } @else {
+                    Preparado
+                  }
+                </p>
+                <h2 id="modal-title">{{ pauseTitle() }}</h2>
+                <p class="player-modal__song">
+                  {{ song.title }}
+                  @if (song.artist) {
+                    · {{ song.artist }}
+                  }
+                </p>
+
+                <div class="player-modal__stats">
+                  <span class="tag">{{ size() }} teclas</span>
+                  <span class="tag">{{ bpm() }} BPM</span>
+                  <span class="tag">{{ totalNotes() }} notas</span>
+                  @if (unsupportedCount() > 0) {
+                    <span class="tag tag--warning">{{ unsupportedCount() }} no caben</span>
+                  }
+                </div>
+
+                @if (song.midi) {
+                  <div class="player-modal__config">
+                    @if (song.midi.trackName) {
+                      <span>
+                        <strong>Pista</strong>{{ song.midi.trackName }}
+                        @if (song.midi.channel !== undefined) {
+                          · Canal {{ song.midi.channel + 1 }}
+                        }
+                      </span>
+                    }
+                    <span><strong>Transposición</strong>{{ midiTranspositionLabel() }}</span>
+                    <span><strong>Reducción</strong>{{ midiReductionLabel() }}</span>
+                  </div>
+                }
+
+                @if (unsupportedCount() > 0) {
+                  <div class="player-modal__warning">
+                    <p>
+                      Este tab no encaja completo en {{ size() }} teclas.
+                      @if (recommended()) {
+                        Necesita al menos {{ recommended() }}.
+                      }
+                    </p>
+                    @if (song.midiSource) {
+                      <button class="btn btn--soft" type="button" (click)="openMidiConfig()">
+                        Configurar MIDI
+                      </button>
+                    } @else if (canSwitchSize()) {
+                      <button class="btn btn--soft" type="button" (click)="switchToRecommended()">
+                        Usar {{ recommended() }} teclas
+                      </button>
+                    }
+                  </div>
+                }
+
+                @if (isPaused() || isFinished()) {
+                  <div class="player-modal__seek">
+                    <button class="btn btn--ghost" type="button" (click)="seekBy(-10000)">
+                      −10 s
+                    </button>
+                    <span class="player-modal__seek-time"
+                      >{{ elapsedLabel() }} / {{ totalLabel() }}</span
+                    >
+                    <button class="btn btn--ghost" type="button" (click)="seekBy(10000)">
+                      +10 s
+                    </button>
+                  </div>
+                }
+
+                <div class="player-modal__actions">
+                  <button class="btn btn--primary btn--xl" type="button" (click)="primaryAction()">
+                    {{ primaryLabel() }}
+                  </button>
+                  @if (isPaused()) {
+                    <button class="btn btn--soft" type="button" (click)="restart()">
+                      Reiniciar
+                    </button>
+                  }
+                  <button
+                    class="btn"
+                    type="button"
+                    [class.btn--soft]="noteSound()"
+                    [class.btn--ghost]="!noteSound()"
+                    [attr.aria-pressed]="noteSound()"
+                    (click)="toggleNoteSound()"
+                  >
+                    @if (noteSound()) {
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path
+                          d="M4 9v6h4l5 4V5L8 9H4Z"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linejoin="round"
+                        />
+                        <path
+                          d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                        />
+                      </svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path
+                          d="M4 9v6h4l5 4V5L8 9H4Z"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linejoin="round"
+                        />
+                        <path
+                          d="m16 9 5 6M21 9l-5 6"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                        />
+                      </svg>
+                    }
+                    {{ noteSound() ? 'Sonido on' : 'Sonido off' }}
+                  </button>
+                  @if (song.midiSource) {
+                    <button class="btn btn--ghost" type="button" (click)="openMidiConfig()">
+                      Configurar MIDI
+                    </button>
+                  }
+                  <button class="btn btn--ghost" type="button" (click)="openSettings()">
+                    Ajustes
+                  </button>
+                  <button class="btn btn--ghost" type="button" (click)="openCalibration()">
+                    Calibrar
+                  </button>
+                  <button class="btn btn--danger" type="button" (click)="back()">
+                    Volver a la biblioteca
+                  </button>
+                </div>
+
+                <p class="player-modal__hint">
+                  Coloca el móvil en un soporte delante de la kalimba. La línea brillante marca
+                  cuándo tocar.
+                </p>
+              </div>
+            }
+          </section>
+        </div>
+      }
+
+      @if (showCalibration()) {
+        <app-calibration-view
+          [layout]="layout()"
+          [calibration]="currentCalibration()"
+          (saved)="saveCalibration($event)"
+          (closed)="closeCalibration()"
+        />
+      }
+    } @else {
+      <div class="player-message">
+        <h1>Este tab no tiene notas</h1>
+        <p>Vuelve a importarlo o revisa el formato.</p>
+        <button class="btn btn--primary" type="button" (click)="back()">Volver</button>
+      </div>
+    }
+
+    @if (showMidiConfig() && midiConfigFile(); as file) {
+      <app-midi-import-dialog
+        [file]="file"
+        [initialSize]="midiConfigSize()"
+        [initialBpm]="midiConfigBpm()"
+        [initialTitle]="midiConfigTitle()"
+        [initialArtist]="midiConfigArtist()"
+        [initialTrackId]="midiConfigTrackId()"
+        [initialTrackName]="midiConfigTrackName()"
+        [initialChannel]="midiConfigChannel()"
+        [initialTransposition]="midiConfigTransposition()"
+        [initialReduction]="midiConfigReduction()"
+        mode="configure"
+        [showMetadata]="!song.builtIn"
+        submitLabel="Guardar configuración"
+        (submitted)="applyMidiConfig($event)"
+        (closed)="closeMidiConfig()"
+      />
+    }
+  } @else if (!library.ready()) {
+    <div class="player-message">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Cargando canción…</p>
+    </div>
+  } @else {
+    <div class="player-message">
+      <h1>No encuentro este tab</h1>
+      <p>Puede que se haya borrado de la biblioteca.</p>
+      <button class="btn btn--primary" type="button" (click)="back()">
+        Volver a la biblioteca
+      </button>
+    </div>
+  }
+
+  <div class="rotate-hint">
+    <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <rect x="20" y="8" width="24" height="48" rx="6" stroke="currentColor" stroke-width="2.5" />
+      <path
+        d="M28 51h8M47 24a19 19 0 0 1-4 24M17 40a19 19 0 0 1 4-24"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+      />
+      <path
+        d="m47 18 0 8-7-2M17 46l0-8 7 2"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+    <h2>Gira el móvil</h2>
+    <p>Kalimbapp está pensada para usarse en horizontal.</p>
+  </div>
+</div>

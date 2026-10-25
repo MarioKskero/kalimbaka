@@ -1,0 +1,390 @@
+<main class="library" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+  <div class="library__halo" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none">
+          <rect x="4" y="9" width="40" height="30" rx="8" stroke="currentColor" stroke-width="2" />
+          <path
+            d="M15 29V18M21 32V15M27 28V19M33 31V16"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+          />
+          <circle cx="15" cy="34" r="1.5" fill="currentColor" />
+          <circle cx="21" cy="37" r="1.5" fill="currentColor" />
+          <circle cx="27" cy="33" r="1.5" fill="currentColor" />
+          <circle cx="33" cy="36" r="1.5" fill="currentColor" />
+        </svg>
+      </div>
+      <div>
+        <p class="brand__name">Kalimbapp</p>
+        <p class="brand__tagline">Guía visual para tu kalimba</p>
+      </div>
+    </div>
+
+    <div class="topbar__actions">
+      <button class="btn btn--soft" type="button" (click)="openImport()">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M12 5v14M5 12h14"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+        Importar tab
+      </button>
+      <button class="icon-btn" type="button" aria-label="Ayuda" (click)="openHelp()">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
+          <path
+            d="M9.7 9.2a2.4 2.4 0 1 1 3.4 2.2c-.8.4-1.1.8-1.1 1.6v.4"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <circle cx="12" cy="17" r="1" fill="currentColor" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="library__layout">
+    <aside class="sidebar">
+      <section class="panel">
+        <p class="eyebrow">Tu instrumento</p>
+        <div class="panel__heading">
+          <h2>{{ settings().kalimbaSize }} teclas</h2>
+          <span class="tag">Do mayor</span>
+        </div>
+        <div class="segmented" role="group" aria-label="Número de teclas">
+          @for (size of sizes; track size) {
+            <button
+              class="segmented__item"
+              type="button"
+              [class.segmented__item--active]="settings().kalimbaSize === size"
+              (click)="setSize(size)"
+            >
+              {{ size }}
+            </button>
+          }
+        </div>
+        <p class="panel__hint">
+          {{ layout().name }}. Los tabs de 17 teclas funcionan también en una de 21.
+        </p>
+        <button class="btn btn--ghost panel__button" type="button" (click)="openCalibration()">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M10 15v4"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+          Calibrar pantalla
+        </button>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">Ajustes rápidos</p>
+
+        <label class="range-row">
+          <span>BPM por defecto</span>
+          <strong>{{ settings().defaultBpm }}</strong>
+        </label>
+        <input
+          class="range"
+          type="range"
+          min="40"
+          max="160"
+          step="1"
+          [value]="settings().defaultBpm"
+          (input)="onBpmInput($event)"
+          aria-label="BPM por defecto"
+        />
+
+        <label class="range-row">
+          <span>Articulación entre notas</span>
+          <strong>{{ gapPercent() }}%</strong>
+        </label>
+        <input
+          class="range"
+          type="range"
+          min="0"
+          max="40"
+          step="1"
+          [value]="gapPercent()"
+          (input)="onGapInput($event)"
+          aria-label="Articulación entre notas"
+        />
+        <p class="panel__hint">No cambia el tempo; solo acorta la nota.</p>
+
+        <button
+          class="toggle-row"
+          type="button"
+          [class.toggle-row--on]="settings().metronome"
+          (click)="toggleMetronome()"
+        >
+          <span>Metrónomo</span>
+          <span class="toggle-row__switch" aria-hidden="true"></span>
+        </button>
+
+        <button
+          class="toggle-row"
+          type="button"
+          [class.toggle-row--on]="settings().noteSound"
+          (click)="toggleNoteSound()"
+        >
+          <span>Sonido de notas</span>
+          <span class="toggle-row__switch" aria-hidden="true"></span>
+        </button>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">Biblioteca</p>
+        <p class="panel__hint">
+          Importa varios <code>.txt</code> o <code>.json</code> a la vez, o carga un
+          <code>.mid</code>. La pista y la configuración se eligen al pulsar Jugar por primera vez.
+        </p>
+        <input
+          #midiInput
+          type="file"
+          accept=".mid,.midi,audio/midi,audio/x-midi"
+          hidden
+          (change)="onMidiFileSelected($event)"
+        />
+        <div class="sidebar__actions">
+          <button class="btn btn--soft" type="button" (click)="openImport()">Pegar un tab</button>
+          <button
+            class="btn btn--soft btn--midi"
+            type="button"
+            [disabled]="midiLoading()"
+            (click)="midiInput.click()"
+          >
+            {{ midiLoading() ? 'Leyendo…' : 'Importar MIDI' }}
+          </button>
+          <label class="btn btn--ghost file-button">
+            Cargar varios
+            <input
+              type="file"
+              multiple
+              accept=".txt,.json,.kalimba,text/plain,application/json"
+              (change)="onFilesSelected($event)"
+              hidden
+            />
+          </label>
+          <button class="btn btn--ghost" type="button" (click)="exportLibrary()">Exportar</button>
+        </div>
+      </section>
+
+      <section class="help-card">
+        <p class="eyebrow">Cómo funciona</p>
+        <ol>
+          <li>Elige tu kalimba y calibra el ancho de los carriles.</li>
+          <li>Coloca el móvil en un soporte delante del instrumento.</li>
+          <li>Pulsa Jugar y toca cada tecla cuando la nota llegue a la línea.</li>
+        </ol>
+        <button class="btn btn--ghost" type="button" (click)="openHelp()">Ver guía completa</button>
+      </section>
+    </aside>
+
+    <section class="content">
+      <div class="content__toolbar">
+        <div>
+          <p class="eyebrow">Tablaturas</p>
+          <h1>Elige una canción</h1>
+        </div>
+
+        <label class="search">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8" />
+            <path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+          <input
+            type="search"
+            placeholder="Buscar por título o artista"
+            autocomplete="off"
+            [value]="query()"
+            (input)="onQueryInput($event)"
+            aria-label="Buscar tabs"
+          />
+        </label>
+      </div>
+
+      @if (libraryError()) {
+        <div class="banner banner--error">
+          <strong>No se pudieron cargar las demos.</strong>
+          <span>{{ libraryError() }}</span>
+        </div>
+      }
+
+      <div class="summary">
+        <span class="tag">{{ songs().length }} tabs</span>
+        <span class="tag">{{ demoCount() }} demos</span>
+        <span class="tag">{{ importedCount() }} importados</span>
+        <span class="tag">Base: {{ settings().kalimbaSize }} teclas</span>
+      </div>
+
+      @if (filteredSongs().length > 0) {
+        <div class="song-grid">
+          @for (song of filteredSongs(); track song.id) {
+            <app-song-card
+              [song]="song"
+              [selectedSize]="settings().kalimbaSize"
+              (play)="playSong($event)"
+              (view)="openTabViewer($event)"
+              (remove)="removeSong($event)"
+            />
+          }
+        </div>
+      } @else if (!ready()) {
+        <div class="empty">
+          <span class="spinner" aria-hidden="true"></span>
+          <p>Cargando tabs de ejemplo…</p>
+        </div>
+      } @else {
+        <div class="empty">
+          <div class="empty__icon" aria-hidden="true">♪</div>
+          <h2>No hay tabs todavía</h2>
+          <p>Importa un tab de KalimbaTabs o pega las notas directamente.</p>
+          <button class="btn btn--primary" type="button" (click)="openImport()">
+            Importar mi primer tab
+          </button>
+        </div>
+      }
+    </section>
+  </div>
+
+  @if (status(); as message) {
+    <div class="toast" [class.toast--error]="message.type === 'error'" role="status">
+      {{ message.text }}
+    </div>
+  }
+
+  @if (showImport()) {
+    <app-import-dialog
+      [initialSize]="settings().kalimbaSize"
+      (submitted)="handleImport($event)"
+      (closed)="closeImport()"
+    />
+  }
+
+  @if (viewingSong(); as song) {
+    <app-tab-viewer-dialog
+      [song]="song"
+      (created)="importGeneratedTab($event)"
+      (closed)="closeTabViewer()"
+    />
+  }
+
+  @if (showCalibration()) {
+    <app-calibration-view
+      [layout]="layout()"
+      [calibration]="currentCalibration()"
+      (saved)="saveCalibration($event)"
+      (closed)="closeCalibration()"
+    />
+  }
+
+  @if (showHelp()) {
+    <div class="help-backdrop" (click)="closeHelp()">
+      <section
+        class="help-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="help-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="help-dialog__header">
+          <div>
+            <p class="eyebrow">Guía rápida</p>
+            <h2 id="help-title">Cómo usar Kalimbapp</h2>
+          </div>
+          <button class="icon-btn" type="button" aria-label="Cerrar" (click)="closeHelp()">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="m6 6 12 12M18 6 6 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </header>
+
+        <div class="help-dialog__body">
+          <div class="help-step">
+            <span>01</span>
+            <div>
+              <h3>Prepara tu kalimba</h3>
+              <p>Elige 8, 17 o 21 teclas. La app usa el layout estándar en Do mayor.</p>
+            </div>
+          </div>
+          <div class="help-step">
+            <span>02</span>
+            <div>
+              <h3>Calibra la pantalla</h3>
+              <p>
+                Pulsa <strong>Calibrar pantalla</strong>, usa <strong>− / +</strong> para ajustar el
+                ancho y arrastra para que cada carril coincida con su tecla física.
+              </p>
+            </div>
+          </div>
+          <div class="help-step">
+            <span>03</span>
+            <div>
+              <h3>Coloca el móvil</h3>
+              <p>
+                Sitúa el móvil en un soporte delante de la kalimba, en horizontal y a una altura
+                cómoda. La app mantiene la pantalla encendida durante la canción.
+              </p>
+            </div>
+          </div>
+          <div class="help-step">
+            <span>04</span>
+            <div>
+              <h3>Toca siguiendo las notas</h3>
+              <p>
+                Las notas caen por el carril de su tecla. Cuando llegan a la línea brillante, toca
+                esa tecla. Los acordes iluminan varias teclas a la vez.
+              </p>
+              <p>
+                Puedes pausar la pantalla y retroceder o avanzar 10 s. Cada línea en blanco del tab
+                añade un pulso de pausa automáticamente.
+              </p>
+            </div>
+          </div>
+
+          <div class="help-format">
+            <h3>Formato de tab</h3>
+            <div class="help-format__grid">
+              <div><code>1 2 3 4 5 6 7</code><span>Grados de la escala</span></div>
+              <div><code>1' 2* 1°</code><span>Una octava arriba</span></div>
+              <div><code>1'' 1”</code><span>Dos octavas arriba</span></div>
+              <div><code>4, 5.</code><span>Una octava abajo</span></div>
+              <div><code>(1 5)</code><span>Acorde / slide</span></div>
+              <div><code>- 0 ~</code><span>Silencio</span></div>
+              <div><code>🔁</code><span>Repetir la canción</span></div>
+              <div><code>x2</code><span>Repetir la línea</span></div>
+            </div>
+            <p>
+              Los tabs de texto no incluyen ritmo real: cada nota o acorde ocupa un pulso constante.
+              Ajusta el BPM y la pausa a tu gusto.
+            </p>
+            <p>
+              También puedes importar un archivo <code>.mid</code>. Al pulsar Jugar por primera vez
+              eliges la pista, el tamaño y la configuración; la app ignorará la percusión y usará
+              los tiempos reales del MIDI. Después podrás cambiarlo desde “Listo para tocar”.
+            </p>
+          </div>
+        </div>
+
+        <footer class="help-dialog__footer">
+          <button class="btn btn--primary" type="button" (click)="closeHelp()">Entendido</button>
+        </footer>
+      </section>
+    </div>
+  }
+</main>
