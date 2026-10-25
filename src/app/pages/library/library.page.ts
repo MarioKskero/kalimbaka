@@ -13,6 +13,7 @@ import { CalibrationService } from '../../services/calibration.service';
 import { FullscreenService } from '../../services/fullscreen.service';
 import { SettingsService } from '../../services/settings.service';
 import { SongLibraryService } from '../../services/song-library.service';
+import { APP_VERSION } from '../../version';
 import { ImportDialogComponent } from '../../components/import-dialog/import-dialog.component';
 import { SongCardComponent } from '../../components/song-card/song-card.component';
 import { CalibrationViewComponent } from '../../components/calibration-view/calibration-view.component';
@@ -37,6 +38,7 @@ interface StatusMessage {
 })
 export class LibraryPage {
   readonly library = inject(SongLibraryService);
+  readonly version = APP_VERSION;
   readonly settingsService = inject(SettingsService);
   readonly calibrationService = inject(CalibrationService);
   readonly fullscreen = inject(FullscreenService);
