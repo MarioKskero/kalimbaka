@@ -1,0 +1,141 @@
+{
+  "configVersion": 1,
+  "timestamp": 1792951521162,
+  "index": "/kalimbaka/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/kalimbaka/chunk-C6SSabu_.js",
+        "/kalimbaka/chunk-CmJLeJq8.js",
+        "/kalimbaka/chunk-DZze7WU_.js",
+        "/kalimbaka/favicon.ico",
+        "/kalimbaka/index.html",
+        "/kalimbaka/main-BY3L2ADG.js",
+        "/kalimbaka/manifest.webmanifest",
+        "/kalimbaka/styles-64OJK5UH.css"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/kalimbaka/favicon-32x32.png",
+        "/kalimbaka/icons/icon-128x128.png",
+        "/kalimbaka/icons/icon-144x144.png",
+        "/kalimbaka/icons/icon-152x152.png",
+        "/kalimbaka/icons/icon-180x180.png",
+        "/kalimbaka/icons/icon-192x192.png",
+        "/kalimbaka/icons/icon-384x384.png",
+        "/kalimbaka/icons/icon-512x512.png",
+        "/kalimbaka/icons/icon-72x72.png",
+        "/kalimbaka/icons/icon-96x96.png"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "songs",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true,
+        "ignoreSearch": true
+      },
+      "urls": [
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - City of Tears.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Dirtmouth.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Enter Hallownest.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Greenpath.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Main Theme.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Mantis Lords.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Nosk.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Queen's Garden.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Reflection.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Resting Grounds.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - Soul Sanctum.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - The White Lady.mid",
+        "/kalimbaka/songs/Hollow Knight/Hollow Knight - White Palace.mid",
+        "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Believer.mid",
+        "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Demons.mid",
+        "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Enemy.mid",
+        "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Radioactive 2.mid",
+        "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Radioactive.mid",
+        "/kalimbaka/songs/index.json",
+        "/kalimbaka/songs/monkeyisland.mid",
+        "/kalimbaka/songs/ode-to-joy.txt"
+      ],
+      "patterns": []
+    }
+  ],
+  "dataGroups": [],
+  "hashTable": {
+    "/kalimbaka/chunk-C6SSabu_.js": "0b1ec123fb156e6f347fe5ad94ba81518157a8fd",
+    "/kalimbaka/chunk-CmJLeJq8.js": "5df77b540650d742d7354a45d95a6637e662c88f",
+    "/kalimbaka/chunk-DZze7WU_.js": "fd0c9e9f79b38cc3176c584757a0846364bfce44",
+    "/kalimbaka/favicon-32x32.png": "cae0adbcc92c2c87f2aea850a7a70b68d020fe9a",
+    "/kalimbaka/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
+    "/kalimbaka/icons/icon-128x128.png": "86bc14fb7f394ecbb9219e40124bdde56105a67e",
+    "/kalimbaka/icons/icon-144x144.png": "ecea175be226c151413430c887bd42954c1365e8",
+    "/kalimbaka/icons/icon-152x152.png": "a1fd05a0d3252408474462a9889095050fa999be",
+    "/kalimbaka/icons/icon-180x180.png": "236a42c3e00e2eee8017c52d377c06db2bd240f9",
+    "/kalimbaka/icons/icon-192x192.png": "279d78ac697c2e1c4525e306cf466a5e08602af8",
+    "/kalimbaka/icons/icon-384x384.png": "a970fa5722cc36ce34a46c57c4731e8140803762",
+    "/kalimbaka/icons/icon-512x512.png": "f42aa064b34898a2c9d7586f800b2d0de6e5dfdc",
+    "/kalimbaka/icons/icon-72x72.png": "06a88bbd5c4aa11f53ca6926be28643d76bc2c73",
+    "/kalimbaka/icons/icon-96x96.png": "403909ff6970ededb8fa2eaf516e9bc8c3bfe5ab",
+    "/kalimbaka/index.html": "76d74ede25a17a7ecb8adea2634520669a39b43e",
+    "/kalimbaka/main-BY3L2ADG.js": "c2e2e2cac5567b19a52845cd1da4268c3f4e922f",
+    "/kalimbaka/manifest.webmanifest": "a475ea654e69f1cda52eaa117127d193303bd99f",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - City of Tears.mid": "b7adaf5e9e3a1ee97ade18ed31c51d8c3036fe2c",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Dirtmouth.mid": "d23e461cdf9e2f6775860397e56a6ea2c539d00b",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Enter Hallownest.mid": "3cb527c65fecfc19aec8adf313f4edf019945bba",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Greenpath.mid": "81a6c5977bc96360f55c1eb57167e2792c17419e",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Main Theme.mid": "69a902f78ad4ce6666419ee77af1d6ffe55f3fe8",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Mantis Lords.mid": "93b68041c1af6420fb0cb0c511871583a29d77e7",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Nosk.mid": "78c0d1d6c1673337c32550415f4696ca2090930a",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Queen's Garden.mid": "94ddda4d10096c27cbcce49f17970e9c55ace1fc",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Reflection.mid": "a382235a8d6386be9f71ef309f62c18726d7671d",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Resting Grounds.mid": "9717c85c68e143bc0f07f49948ea2b50f9ffc288",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - Soul Sanctum.mid": "47f153bfd7828ac744d8beb54310ff3439743dc4",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - The White Lady.mid": "11c972bd17aa32feddfb10dd0888a051a5d40a99",
+    "/kalimbaka/songs/Hollow Knight/Hollow Knight - White Palace.mid": "c8cbf43631d86facf58d232ec1842953310fe9cd",
+    "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Believer.mid": "f3385f111fda7e0750b14af691a49d0c379f9d46",
+    "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Demons.mid": "bcc560e9b1e896d850a13901b3f12099ae45807f",
+    "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Enemy.mid": "bf6dcecc15c3bef1cecdfb7b43152bff4ad3fa89",
+    "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Radioactive 2.mid": "1e698a411bf9f815046df4951365d82b83bd50f5",
+    "/kalimbaka/songs/Imagine Dragons/Imagine Dragons - Radioactive.mid": "a73db494fb447db0100dec803457c00ec3716854",
+    "/kalimbaka/songs/index.json": "93df3a54ee5b9d76d5f5803591f290934a08cf85",
+    "/kalimbaka/songs/monkeyisland.mid": "d6ed5f76ee0214a57eb31e6de24ae8f5be4ae45d",
+    "/kalimbaka/songs/ode-to-joy.txt": "40d983b516214638b828215e77415e832267f7df",
+    "/kalimbaka/styles-64OJK5UH.css": "23038d5da0e8f8b2651dc40a6f9c62bc97b78a28"
+  },
+  "navigationUrls": [
+    {
+      "positive": true,
+      "regex": "^\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*\\.[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$"
+    }
+  ],
+  "navigationRequestStrategy": "performance"
+}

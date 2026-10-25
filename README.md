@@ -66,6 +66,10 @@ npm test -- --watch=false
 
 La base `/kalimbaka/` se aplica desde `deploy.sh` con `ng build --base-href /kalimbaka/`, pensada para publicar en `https://<usuario>.github.io/kalimbaka/`. La configuración de producción no fija `baseHref`. El directorio `dist` ya no está ignorado, así que puedes subir el contenido de `dist/kalimbapp/browser`.
 
+### PWA
+
+El build de producción incluye `manifest.webmanifest`, iconos y un service worker. En HTTPS se puede **instalar** como app y funciona offline: se cachean el shell de la app, los iconos y las canciones de demo. En `npm start` el service worker está desactivado; para probarlo, sirve un build de producción.
+
 > Los tests usan el builder `@angular/build:unit-test` con Vitest. No uses `npm test -- --run`; el flag correcto es `--watch=false`.
 
 Al cambiar archivos de `public/songs`, `public/songs/index.json` o los propios MIDI, haz una **recarga completa** de la página. El catálogo se carga al iniciar la app y las peticiones llevan cache-busting (`?v=timestamp` + `cache: no-store`).
@@ -482,7 +486,6 @@ Abre **Configurar MIDI** desde **“Listo para tocar”** y activa **Quitar acor
 - Los cambios de tempo internos del MIDI no se reflejan en el metrónomo.
 - La importación MIDI trabaja con una pista/canal, no mezcla varias.
 - En un 17 en Do mayor, las notas cromáticas no se pueden conservar exactas.
-- No hay PWA/service worker; es una app web servida por Angular.
 
 ---
 

@@ -48,6 +48,8 @@ src/core/kalimba/   dominio puro de kalimba (sin Angular)
 src/core/midi/      dominio puro MIDI (sin Angular)
 src/app/models/     Song e inputs de importación
 src/app/services/   biblioteca, ajustes, calibración, audio, fullscreen, parser MIDI
+ngsw-config.json    configuración del service worker (app + canciones)
+public/manifest.webmanifest + public/icons/  manifest e iconos PWA
 src/app/components/ presentacionales: tarjetas, diálogos, canvas, calibración, visor
 src/app/pages/      library.page y player.page
 public/songs/       tabs/MIDI de demo + index.json
@@ -372,7 +374,7 @@ La UI/canvas no tiene tests automatizados. Para cambios visuales, prueba manualm
 - El visor muestra el tab de texto original; el MIDI configurado muestra notas, no un tab normal. Un MIDI pendiente no tiene visor.
 - No vuelvas a fijar pista/transposición/reducción en el catálogo MIDI. La pista se preselecciona con la melodía probable; la transposición se sugiere con Auto en la primera configuración.
 - El formato de texto MIDI personalizado se retiró; no lo reintroduzcas sin pedirlo.
-- La app no tiene PWA/service worker ni detección por micrófono.
+- La app es PWA en producción: service worker, manifest e iconos. El shell y `public/songs` se precargan; en desarrollo el SW está desactivado. No hay detección por micrófono.
 - Las demos musicales tienen derechos de sus autores; no añadas contenido sin permiso.
 
 ## 17. Convenciones

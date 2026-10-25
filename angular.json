@@ -30,12 +30,8 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.scss"
-            ],
-            "allowedCommonJsDependencies": [
-              "@tonejs/midi"
-            ]
+            "styles": ["src/styles.scss"],
+            "allowedCommonJsDependencies": ["@tonejs/midi"]
           },
           "configurations": {
             "production": {
@@ -51,7 +47,8 @@
                   "maximumError": "32kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "serviceWorker": "ngsw-config.json"
             },
             "development": {
               "optimization": false,
