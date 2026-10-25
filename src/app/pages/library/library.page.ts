@@ -11,6 +11,7 @@ import { Calibration, getLayout, KalimbaSize } from '../../../core/kalimba';
 import { ImportSongInput, Song } from '../../models/song';
 import { CalibrationService } from '../../services/calibration.service';
 import { FullscreenService } from '../../services/fullscreen.service';
+import { PwaInstallService } from '../../services/pwa-install.service';
 import { SettingsService } from '../../services/settings.service';
 import { SongLibraryService } from '../../services/song-library.service';
 import { APP_VERSION } from '../../version';
@@ -42,6 +43,7 @@ export class LibraryPage {
   readonly settingsService = inject(SettingsService);
   readonly calibrationService = inject(CalibrationService);
   readonly fullscreen = inject(FullscreenService);
+  readonly pwaInstall = inject(PwaInstallService);
 
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -234,6 +236,10 @@ export class LibraryPage {
 
   toggleFullscreen(): void {
     void this.fullscreen.toggleFullscreen();
+  }
+
+  installPwa(): void {
+    void this.pwaInstall.install();
   }
 
   openHelp(): void {

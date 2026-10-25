@@ -1,6 +1,7 @@
 import { Component, DestroyRef, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FullscreenService } from './services/fullscreen.service';
+import { PwaInstallService } from './services/pwa-install.service';
 
 @Component({
   selector: 'app-root',
@@ -13,6 +14,8 @@ export class App {
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
+    inject(PwaInstallService);
+
     if (typeof document === 'undefined') {
       return;
     }

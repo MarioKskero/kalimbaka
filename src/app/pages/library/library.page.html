@@ -38,6 +38,25 @@
         </svg>
         {{ midiLoading() ? 'Leyendo…' : 'Importar' }}
       </button>
+      @if (pwaInstall.canInstall() && !pwaInstall.isStandalone()) {
+        <button
+          class="icon-btn icon-btn--active"
+          type="button"
+          aria-label="Instalar aplicación"
+          title="Instalar aplicación"
+          (click)="installPwa()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      }
       @if (fullscreen.supported) {
         <button
           class="icon-btn"
@@ -343,6 +362,22 @@
               <p>
                 Puedes pausar la pantalla y retroceder o avanzar 10 s. Cada línea en blanco del tab
                 añade un pulso de pausa automáticamente.
+              </p>
+            </div>
+          </div>
+
+          <div class="help-step">
+            <span>05</span>
+            <div>
+              <h3>Instalar la app</h3>
+              <p>
+                En Chrome/Edge, cuando esté publicada en HTTPS, usa el icono de instalar de la barra
+                de direcciones o el botón de instalar de la cabecera. En Android: menú → Instalar
+                aplicación. En iPhone/iPad: Compartir → Añadir a pantalla de inicio.
+              </p>
+              <p>
+                En <code>npm start</code> no está disponible: el service worker solo se activa en la
+                build de producción.
               </p>
             </div>
           </div>

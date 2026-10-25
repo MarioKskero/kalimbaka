@@ -68,7 +68,13 @@ La base `/kalimbaka/` se aplica desde `deploy.sh` con `ng build --base-href /kal
 
 ### PWA
 
-El build de producción incluye `manifest.webmanifest`, iconos y un service worker. En HTTPS se puede **instalar** como app y funciona offline: se cachean el shell de la app, los iconos y las canciones de demo. En `npm start` el service worker está desactivado; para probarlo, sirve un build de producción.
+El build de producción incluye `manifest.webmanifest`, iconos y un service worker. En HTTPS se puede **instalar** como app y funciona offline: se cachean el shell de la app, los iconos y las canciones de demo.
+
+- **Chrome/Edge**: icono de instalar en la barra de direcciones, menú → Instalar Kalimbapp, o el botón de instalar que aparece en la cabecera cuando el navegador lo permite.
+- **Android**: menú → Instalar aplicación / Añadir a pantalla de inicio.
+- **iPhone/iPad**: Compartir → Añadir a pantalla de inicio.
+
+En `npm start` el service worker está desactivado y la instalación no aparece. Para probarla, publica el build de producción en HTTPS (GitHub Pages) o sírvelo desde un servidor estático.
 
 > Los tests usan el builder `@angular/build:unit-test` con Vitest. No uses `npm test -- --run`; el flag correcto es `--watch=false`.
 
