@@ -11,7 +11,7 @@ Este documento resume la arquitectura, las reglas de negocio y las trampas conoc
 - Tests con Vitest vía `ng test`.
 - Actualmente: **84 tests pasando** y `npm run build` correcto.
 - El proyecto está dentro de un repositorio git. No hagas commits salvo que se pida explícitamente.
-- El build de producción usa `baseHref: "/kalimbaka/"` para GitHub Pages.
+- La base `/kalimbaka/` se aplica en `deploy.sh` con `--base-href`; la configuración de producción no fija `baseHref`.
 
 ## 2. Comandos
 

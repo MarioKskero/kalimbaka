@@ -64,7 +64,7 @@ npm run start:prod     # sirve la configuración de producción en el 4300
 npm test -- --watch=false
 ```
 
-La configuración de producción usa `baseHref: "/kalimbaka/"`, pensada para publicar en `https://<usuario>.github.io/kalimbaka/`. El directorio `dist` ya no está ignorado, así que puedes subir el contenido de `dist/kalimbapp/browser`.
+La base `/kalimbaka/` se aplica desde `deploy.sh` con `ng build --base-href /kalimbaka/`, pensada para publicar en `https://<usuario>.github.io/kalimbaka/`. La configuración de producción no fija `baseHref`. El directorio `dist` ya no está ignorado, así que puedes subir el contenido de `dist/kalimbapp/browser`.
 
 > Los tests usan el builder `@angular/build:unit-test` con Vitest. No uses `npm test -- --run`; el flag correcto es `--watch=false`.
 
