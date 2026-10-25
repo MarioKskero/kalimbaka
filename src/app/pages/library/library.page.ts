@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { Calibration, getLayout, KalimbaSize } from '../../../core/kalimba';
 import { ImportSongInput, Song } from '../../models/song';
 import { CalibrationService } from '../../services/calibration.service';
+import { FullscreenService } from '../../services/fullscreen.service';
 import { SettingsService } from '../../services/settings.service';
 import { SongLibraryService } from '../../services/song-library.service';
 import { ImportDialogComponent } from '../../components/import-dialog/import-dialog.component';
@@ -38,6 +39,7 @@ export class LibraryPage {
   readonly library = inject(SongLibraryService);
   readonly settingsService = inject(SettingsService);
   readonly calibrationService = inject(CalibrationService);
+  readonly fullscreen = inject(FullscreenService);
 
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -226,6 +228,10 @@ export class LibraryPage {
 
   closeCalibration(): void {
     this.showCalibration.set(false);
+  }
+
+  toggleFullscreen(): void {
+    void this.fullscreen.toggleFullscreen();
   }
 
   openHelp(): void {

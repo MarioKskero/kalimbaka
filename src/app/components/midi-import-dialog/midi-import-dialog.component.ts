@@ -12,7 +12,7 @@ import {
 import { getLayout, KalimbaSize } from '../../../core/kalimba';
 import {
   analyzeMidiNotes,
-  DEFAULT_MIDI_REDUCTION,
+  RECOMMENDED_MIDI_REDUCTION,
   MidiAnalysis,
   MidiPart,
   MidiReduction,
@@ -128,8 +128,11 @@ export class MidiImportDialogComponent implements OnInit {
     if (!part) {
       return 0;
     }
-    return suggestTransposition(part.notes, getLayout(this.initialSize()), DEFAULT_MIDI_REDUCTION)
-      .transposition;
+    return suggestTransposition(
+      part.notes,
+      getLayout(this.initialSize()),
+      RECOMMENDED_MIDI_REDUCTION,
+    ).transposition;
   });
   readonly isRecommendedConfig = computed(() => {
     const analysis = this.analysis();
@@ -137,7 +140,7 @@ export class MidiImportDialogComponent implements OnInit {
     if (!analysis || !part) {
       return false;
     }
-    const reduction = DEFAULT_MIDI_REDUCTION;
+    const reduction = RECOMMENDED_MIDI_REDUCTION;
     return (
       this.selectedPartId() === part.id &&
       this.bpm() === analysis.bpm &&
@@ -159,7 +162,7 @@ export class MidiImportDialogComponent implements OnInit {
       this.bpm.set(this.initialBpm() ?? analysis.bpm);
       this.size.set(this.initialSize());
 
-      const reduction = this.initialReduction() ?? DEFAULT_MIDI_REDUCTION;
+      const reduction = this.initialReduction() ?? RECOMMENDED_MIDI_REDUCTION;
       this.foldOctaves.set(reduction.foldOctaves);
       this.snapChromatic.set(reduction.snapChromatic);
       this.removeChords.set(reduction.removeChords ?? false);
@@ -219,9 +222,9 @@ export class MidiImportDialogComponent implements OnInit {
     this.selectedPartId.set(part?.id ?? null);
     this.bpm.set(analysis.bpm);
     this.size.set(this.initialSize());
-    this.foldOctaves.set(DEFAULT_MIDI_REDUCTION.foldOctaves);
-    this.snapChromatic.set(DEFAULT_MIDI_REDUCTION.snapChromatic);
-    this.removeChords.set(DEFAULT_MIDI_REDUCTION.removeChords ?? false);
+    this.foldOctaves.set(RECOMMENDED_MIDI_REDUCTION.foldOctaves);
+    this.snapChromatic.set(RECOMMENDED_MIDI_REDUCTION.snapChromatic);
+    this.removeChords.set(RECOMMENDED_MIDI_REDUCTION.removeChords ?? false);
     this.manualTransposition.set(false);
     this.applySuggestion();
     this.recommendedApplied.set(true);

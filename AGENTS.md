@@ -9,7 +9,7 @@ Este documento resume la arquitectura, las reglas de negocio y las trampas conoc
 - Reproductor en canvas + WebAudio.
 - Importación de tabs de texto y MIDI (`@tonejs/midi`).
 - Tests con Vitest vía `ng test`.
-- Actualmente: **84 tests pasando** y `npm run build` correcto.
+- Actualmente: **90 tests pasando** y `npm run build` correcto.
 - El proyecto está dentro de un repositorio git. No hagas commits salvo que se pida explícitamente.
 - La base `/kalimbaka/` se aplica en `deploy.sh` con `--base-href`; la configuración de producción no fija `baseHref`.
 
@@ -121,6 +121,7 @@ interface MidiReduction {
 ```
 
 - `DEFAULT_MIDI_REDUCTION` = octavas + cromatismos, sin quitar acordes.
+- `RECOMMENDED_MIDI_REDUCTION` = octavas + cromatismos + quitar acordes (solo melodía); es el estado recomendado del diálogo MIDI.
 - `STRICT_MIDI_REDUCTION` = todo desactivado.
 - Las funciones core reciben `reduction`; si no se pasa, son estrictas. La app pasa `midi.reduction ?? DEFAULT_MIDI_REDUCTION`.
 - `removeChords` conserva la nota más aguda de cada grupo simultáneo.
@@ -236,8 +237,8 @@ Orden:
 
 - El canvas dibuja y emite `noteHit` al cruzar `startMs`; el audio usa ese evento.
 - En texto, el reproductor usa `settings.kalimbaSize`; en MIDI configurado usa `Song.kalimbaSize`. En MIDI sin configurar usa el tamaño base de ajustes y abre el diálogo de configuración antes de crear el timeline.
-- El diálogo MIDI parte del BPM original del MIDI y de la reducción sin pérdidas (`DEFAULT_MIDI_REDUCTION`). La pista se preselecciona con la melodía probable; la transposición se calcula con **Auto** y se puede ajustar a mano.
-- En la primera configuración, el diálogo ofrece **Aplicar recomendados**: pista sugerida, BPM original, tamaño base, reducción por defecto y transposición Auto. Tras aplicarlo, el botón pasa a **Guardar configuración**; si la configuración deja de coincidir con la recomendada, vuelve a **Aplicar recomendados**.
+- El diálogo MIDI parte del BPM original del MIDI y de `RECOMMENDED_MIDI_REDUCTION` (octavas, cromatismos y quitar acordes). La pista se preselecciona con la melodía probable; la transposición se calcula con **Auto** y se puede ajustar a mano.
+- En la primera configuración, el diálogo ofrece **Aplicar recomendados**: pista sugerida, BPM original, tamaño base, `RECOMMENDED_MIDI_REDUCTION` y transposición Auto. Tras aplicarlo, el botón pasa a **Guardar configuración**; si la configuración deja de coincidir con la recomendada, vuelve a **Aplicar recomendados**. La X de al lado cierra descartando cambios.
 - La configuración MIDI se guarda en la canción. **“Listo para tocar”** debe mostrar pista, transposición y reducción, y permitir reabrir el diálogo con **Configurar MIDI**.
 - Mantén los avisos y el selector de tamaño en canciones de texto. En MIDI configurado, el tamaño se cambia desde **Configurar MIDI**, no desde el selector global.
 - El tick del HUD se emite a ~15 fps.
@@ -247,12 +248,16 @@ Orden:
 - **−10/+10 s**: barra superior, modal y flechas; usa tiempo musical sin count-in.
 - **Reanudar**: cuenta atrás opcional 0–4; por defecto 0.
 - **HUD superior**: “Ahora” se vacía durante silencios; “Siguiente” salta rests y muestra la próxima nota real.
-- La línea de golpe del reproductor está al 94% de la altura; calibración y reproductor comparten esa base para que el offsetY siga siendo válido.
+- La línea de golpe del reproductor está al 86% de la altura, con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido.
 - La canción se reinicia al cambiar tamaño, BPM o articulación. Las pausas de frase son fijas: una línea en blanco = 1 beat.
 - El loop de MIDI usa el ajuste de loop, no un `repeat` de canción.
+- La app intenta fullscreen en el primer gesto y ofrece un icono para reintentarlo. `FullscreenService.isActive` debe reflejar `fullscreenchange`; no marcarlo activo de forma optimista.
+- Volver del reproductor a la biblioteca no debe salir de fullscreen. El único control de la app para salir es el icono de la biblioteca, que alterna entrar/salir.
 - La pausa y el seek deben cortar notas activas.
 - El teclado manual usa el mapa puro de `src/core/kalimba/keyboard.ts`, se persiste en `kalimbapp.keyboard.v1` y comparte asignaciones por nota entre tamaños. Mantén reservadas `Esc`, espacio, flechas, modificadores y `F1–F12`.
+- `PlayerSettings.noteColors` define los colores por defecto por grado (1–7); `PlayerSettings.tineColors` guarda overrides por ID de tina y permite repetir el mismo color en varias teclas. Canvas, teclas y calibración resuelven `tineColors[tine.id] ?? noteColors[grado]`. El modo colores del reproductor edita la tina tocada con una paleta táctil y sliders HSL, sin input nativo.
 - La captura de teclado usa `event.code`, ignora repetición/modificadores/modales y limpia carriles activos al perder foco; el canvas solo dibuja el feedback recibido.
+- El canvas convierte punteros de la franja inferior en `lanePress`/`laneRelease` (multitáctil y glissando); el reproductor sintetiza la nota y une esos carriles con los del teclado en `manualLanes`. El audio y el estado viven en el reproductor, no en el canvas.
 - No metas lógica de negocio en el canvas; solo dibujo/reloj.
 
 ## 12. Calibración y almacenamiento

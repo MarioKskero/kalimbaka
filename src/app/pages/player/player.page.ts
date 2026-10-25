@@ -14,6 +14,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   Calibration,
   getLayout,
+  hexToHsl,
+  hslToHex,
   KalimbaSize,
   parseTab,
   recommendedSize,
@@ -23,6 +25,7 @@ import {
   computeSeekTarget,
   isKeyboardCodeAllowed,
   keyboardLabel,
+  NOTE_COLORS,
   TimelineEvent,
 } from '../../../core/kalimba';
 import {
@@ -64,7 +67,7 @@ export class PlayerPage implements OnDestroy {
   private readonly keyboardMapping = inject(KeyboardMappingService);
   private readonly calibrationService = inject(CalibrationService);
   private readonly audio = inject(AudioService);
-  private readonly fullscreen = inject(FullscreenService);
+  readonly fullscreen = inject(FullscreenService);
 
   readonly playfield = viewChild(FallingNotesComponent);
   readonly sizes: readonly KalimbaSize[] = [8, 17, 21];
@@ -87,9 +90,58 @@ export class PlayerPage implements OnDestroy {
   readonly resumeCountInBeats = signal(0);
   readonly resumeCountdown = signal(0);
   readonly pressedLanes = signal<readonly number[]>([]);
+  readonly touchLanes = signal<readonly number[]>([]);
+  readonly manualLanes = computed(() => [
+    ...new Set([...this.pressedLanes(), ...this.touchLanes()]),
+  ]);
   readonly mappingCaptureTine = signal<string | null>(null);
   readonly mappingMessage = signal('');
   readonly showKeyboardMapping = signal(false);
+  readonly colorEdit = signal(false);
+  readonly colorPickerTine = signal<string | null>(null);
+  readonly colorSheetReady = signal(false);
+  readonly customHue = signal(0);
+  readonly customSaturation = signal(80);
+  readonly customLightness = signal(55);
+  readonly colorPickerTineData = computed(() => {
+    const tineId = this.colorPickerTine();
+    return tineId ? (this.layout().tines.find((tine) => tine.id === tineId) ?? null) : null;
+  });
+  readonly colorPickerColor = computed(() => {
+    const tine = this.colorPickerTineData();
+    if (!tine) {
+      return '#ffffff';
+    }
+    return this.tineColors()[tine.id] ?? this.noteColors()[tine.degree - 1] ?? '#ffffff';
+  });
+  readonly saturationGradient = computed(
+    () =>
+      `linear-gradient(90deg, hsl(${this.customHue()} 0% ${this.customLightness()}%), hsl(${this.customHue()} 100% ${this.customLightness()}%))`,
+  );
+  readonly lightnessGradient = computed(
+    () =>
+      `linear-gradient(90deg, #000, hsl(${this.customHue()} ${this.customSaturation()}% 50%), #fff)`,
+  );
+  readonly colorPresets: readonly string[] = [
+    ...NOTE_COLORS,
+    '#ef4444',
+    '#f97316',
+    '#eab308',
+    '#84cc16',
+    '#10b981',
+    '#06b6d4',
+    '#3b82f6',
+    '#8b5cf6',
+    '#d946ef',
+    '#ec4899',
+    '#f43f5e',
+    '#f8fafc',
+    '#cbd5e1',
+    '#64748b',
+    '#334155',
+    '#111827',
+    '#000000',
+  ];
 
   readonly isPlaying = signal(false);
   readonly isPaused = signal(false);
@@ -103,6 +155,7 @@ export class PlayerPage implements OnDestroy {
   readonly tickState = signal<PlaybackTick | null>(null);
 
   private resumeTimer: ReturnType<typeof setInterval> | null = null;
+  private colorSheetTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly midiData = computed(() => this.song()?.midi ?? null);
   readonly parsed = computed(() => {
@@ -167,6 +220,8 @@ export class PlayerPage implements OnDestroy {
     return this.parsed()?.events.filter((event) => !event.isRest).length ?? 0;
   });
   readonly gapPercent = computed(() => Math.round(this.noteGap() * 100));
+  readonly noteColors = computed(() => this.settingsService.settings().noteColors);
+  readonly tineColors = computed(() => this.settingsService.settings().tineColors);
   readonly keyboardBindings = computed(() =>
     buildKeyboardBindings(this.layout(), this.keyboardMapping.mappings()),
   );
@@ -191,9 +246,10 @@ export class PlayerPage implements OnDestroy {
   });
   readonly midiConfigBpm = computed(() => (this.song()?.midi ? this.song()!.bpm : null));
   readonly midiConfigTransposition = computed(() => this.song()?.midi?.transposition ?? null);
-  readonly midiConfigReduction = computed(
-    () => this.song()?.midi?.reduction ?? DEFAULT_MIDI_REDUCTION,
-  );
+  readonly midiConfigReduction = computed(() => {
+    const song = this.song();
+    return song?.midi ? (song.midi.reduction ?? DEFAULT_MIDI_REDUCTION) : null;
+  });
   readonly midiConfigTrackId = computed(() => this.song()?.midi?.trackId ?? null);
   readonly midiConfigTrackName = computed(() => this.song()?.midi?.trackName ?? null);
   readonly midiConfigChannel = computed(() => this.song()?.midi?.channel ?? null);
@@ -336,15 +392,15 @@ export class PlayerPage implements OnDestroy {
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', onVisibility);
       this.cancelResumeCountdown();
+      this.cancelColorSheetTimer();
       this.playfield()?.stop();
-      void this.fullscreen.exit();
     });
   }
 
   ngOnDestroy(): void {
     this.cancelResumeCountdown();
+    this.cancelColorSheetTimer();
     this.playfield()?.stop();
-    void this.fullscreen.exit();
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -387,7 +443,11 @@ export class PlayerPage implements OnDestroy {
       this.seekBy(10000);
     }
     if (event.code === 'Escape') {
-      if (this.showSettings()) {
+      if (this.colorPickerTine()) {
+        this.closeColorPicker();
+      } else if (this.colorEdit()) {
+        this.closeColorEdit();
+      } else if (this.showSettings()) {
         this.closeSettings();
       } else if (this.showCalibration()) {
         this.closeCalibration();
@@ -406,6 +466,148 @@ export class PlayerPage implements OnDestroy {
     this.pressedLanes.update((lanes) => lanes.filter((lane) => lane !== binding.laneIndex));
   }
 
+  onLanePress(lane: number): void {
+    const tine = this.layout().tines[lane];
+    if (!tine) {
+      return;
+    }
+    this.touchLanes.update((lanes) => (lanes.includes(lane) ? lanes : [...lanes, lane]));
+    if (this.colorEdit()) {
+      this.openColorSheet(tine.id);
+      setTimeout(() => this.touchLanes.set([]), 250);
+      return;
+    }
+    void this.audio.resume().then(() => this.audio.playNotes([tine.midi], 900));
+  }
+
+  onLaneRelease(lane: number): void {
+    this.touchLanes.update((lanes) => lanes.filter((item) => item !== lane));
+  }
+
+  openColorEdit(): void {
+    if (this.isPlaying()) {
+      this.pause();
+    }
+    this.colorEdit.set(true);
+    this.colorPickerTine.set(null);
+    this.showPause.set(false);
+    this.showSettings.set(false);
+    this.showCalibration.set(false);
+    this.clearPressedLanes();
+  }
+
+  toggleColorEdit(): void {
+    if (this.colorEdit()) {
+      this.closeColorEdit();
+      return;
+    }
+    this.openColorEdit();
+  }
+
+  closeColorEdit(): void {
+    this.exitColorEdit();
+  }
+
+  closeColorPicker(): void {
+    this.cancelColorSheetTimer();
+    this.colorPickerTine.set(null);
+    this.colorSheetReady.set(false);
+  }
+
+  setColor(color: string): void {
+    this.applyTineColor(color, true);
+  }
+
+  onHueInput(event: Event): void {
+    this.customHue.set(Number((event.target as HTMLInputElement).value));
+    this.applyCustomColor();
+  }
+
+  onSaturationInput(event: Event): void {
+    this.customSaturation.set(Number((event.target as HTMLInputElement).value));
+    this.applyCustomColor();
+  }
+
+  onLightnessInput(event: Event): void {
+    this.customLightness.set(Number((event.target as HTMLInputElement).value));
+    this.applyCustomColor();
+  }
+
+  resetColor(): void {
+    const tine = this.colorPickerTineData();
+    if (!tine) {
+      return;
+    }
+    const colors = { ...this.tineColors() };
+    delete colors[tine.id];
+    this.settingsService.update({ tineColors: colors });
+    this.syncCustomColor(
+      this.noteColors()[tine.degree - 1] ?? NOTE_COLORS[tine.degree - 1] ?? '#ffffff',
+    );
+  }
+
+  private applyCustomColor(): void {
+    this.applyTineColor(
+      hslToHex(this.customHue(), this.customSaturation(), this.customLightness()),
+      false,
+    );
+  }
+
+  private applyTineColor(color: string, syncCustom: boolean): void {
+    const tine = this.colorPickerTineData();
+    if (!tine) {
+      return;
+    }
+    this.settingsService.update({
+      tineColors: { ...this.tineColors(), [tine.id]: color },
+    });
+    if (syncCustom) {
+      this.syncCustomColor(color);
+    }
+  }
+
+  private syncCustomColor(color: string): void {
+    const hsl = hexToHsl(color);
+    this.customHue.set(hsl.h);
+    this.customSaturation.set(hsl.s);
+    this.customLightness.set(hsl.l);
+  }
+
+  private openColorSheet(tineId: string): void {
+    const tine = this.layout().tines.find((item) => item.id === tineId);
+    if (!tine) {
+      return;
+    }
+    this.cancelColorSheetTimer();
+    this.colorSheetReady.set(false);
+    this.colorPickerTine.set(tineId);
+    this.syncCustomColor(
+      this.tineColors()[tine.id] ??
+        this.noteColors()[tine.degree - 1] ??
+        NOTE_COLORS[tine.degree - 1] ??
+        '#ffffff',
+    );
+    this.colorSheetTimer = setTimeout(() => {
+      this.colorSheetReady.set(true);
+      this.colorSheetTimer = null;
+    }, 220);
+  }
+
+  private cancelColorSheetTimer(): void {
+    if (this.colorSheetTimer) {
+      clearTimeout(this.colorSheetTimer);
+      this.colorSheetTimer = null;
+    }
+  }
+
+  private exitColorEdit(): void {
+    this.colorEdit.set(false);
+    this.cancelColorSheetTimer();
+    this.colorPickerTine.set(null);
+    this.colorSheetReady.set(false);
+    this.clearPressedLanes();
+  }
+
   @HostListener('window:blur')
   onWindowBlur(): void {
     this.clearPressedLanes();
@@ -415,6 +617,7 @@ export class PlayerPage implements OnDestroy {
     if (!this.timeline()) {
       return;
     }
+    this.exitColorEdit();
     this.cancelResumeCountdown();
     void this.fullscreen.enter();
     await this.audio.resume();
@@ -450,6 +653,7 @@ export class PlayerPage implements OnDestroy {
     if (!this.isPaused()) {
       return;
     }
+    this.exitColorEdit();
     this.showPause.set(false);
     this.showSettings.set(false);
     this.isPaused.set(false);
@@ -464,6 +668,7 @@ export class PlayerPage implements OnDestroy {
   }
 
   restart(): void {
+    this.exitColorEdit();
     this.cancelResumeCountdown();
     this.showPause.set(false);
     this.showSettings.set(false);
@@ -501,6 +706,7 @@ export class PlayerPage implements OnDestroy {
   }
 
   back(): void {
+    this.exitColorEdit();
     this.cancelResumeCountdown();
     this.playfield()?.stop();
     this.audio.stopAllNotes();
@@ -508,7 +714,6 @@ export class PlayerPage implements OnDestroy {
     this.isPaused.set(false);
     this.isFinished.set(false);
     this.showPause.set(false);
-    void this.fullscreen.exit();
     void this.router.navigate(['/']);
   }
 
@@ -517,6 +722,7 @@ export class PlayerPage implements OnDestroy {
   }
 
   openSettingsMenu(): void {
+    this.exitColorEdit();
     this.cancelResumeCountdown();
     if (this.isPlaying()) {
       this.pause(true);
@@ -534,9 +740,14 @@ export class PlayerPage implements OnDestroy {
   }
 
   openCalibration(): void {
+    this.exitColorEdit();
     this.showCalibration.set(true);
     this.showPause.set(false);
     this.showSettings.set(false);
+  }
+
+  enterFullscreen(): void {
+    void this.fullscreen.enter();
   }
 
   openMidiConfig(): void {
@@ -868,6 +1079,7 @@ export class PlayerPage implements OnDestroy {
       this.showSettings() ||
       this.showCalibration() ||
       this.showMidiConfig() ||
+      this.colorEdit() ||
       event.repeat ||
       event.ctrlKey ||
       event.altKey ||
@@ -921,6 +1133,7 @@ export class PlayerPage implements OnDestroy {
 
   private clearPressedLanes(): void {
     this.pressedLanes.set([]);
+    this.touchLanes.set([]);
   }
 
   private openMidiConfigFor(song: Song): void {

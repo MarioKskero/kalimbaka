@@ -17,6 +17,7 @@ import {
   computeGeometry,
   DEFAULT_CALIBRATION,
   KalimbaLayout,
+  NOTE_COLORS,
   PLAYFIELD_HIT_LINE_RATIO,
   noteColor,
   Viewport,
@@ -39,6 +40,8 @@ interface DragState {
 export class CalibrationViewComponent implements AfterViewInit, OnDestroy {
   readonly layout = input.required<KalimbaLayout>();
   readonly calibration = input.required<Calibration>();
+  readonly noteColors = input<readonly string[]>(NOTE_COLORS);
+  readonly tineColors = input<Readonly<Record<string, string>>>({});
 
   readonly saved = output<Calibration>();
   readonly closed = output<void>();
@@ -75,8 +78,8 @@ export class CalibrationViewComponent implements AfterViewInit, OnDestroy {
     this.resizeObserver?.disconnect();
   }
 
-  colorFor(degree: number): string {
-    return noteColor(degree);
+  colorFor(tineId: string, degree: number): string {
+    return this.tineColors()[tineId] ?? this.noteColors()[degree - 1] ?? noteColor(degree);
   }
 
   onPointerDown(event: PointerEvent): void {

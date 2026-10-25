@@ -27,6 +27,11 @@ export const DEFAULT_MIDI_REDUCTION: MidiReduction = {
   removeChords: false,
 };
 
+export const RECOMMENDED_MIDI_REDUCTION: MidiReduction = {
+  ...DEFAULT_MIDI_REDUCTION,
+  removeChords: true,
+};
+
 export const STRICT_MIDI_REDUCTION: MidiReduction = {
   foldOctaves: false,
   snapChromatic: false,
@@ -284,8 +289,7 @@ function mapGroupWithIndex(
       candidates.sort(
         (a, b) =>
           a.cost - b.cost ||
-          Math.abs(a.targetMidi - preferredMidi) -
-            Math.abs(b.targetMidi - preferredMidi) ||
+          Math.abs(a.targetMidi - preferredMidi) - Math.abs(b.targetMidi - preferredMidi) ||
           a.tine.midi - b.tine.midi,
       );
     }
@@ -397,13 +401,7 @@ export function analyzeMidiNotes(
   for (const group of groups) {
     const reduced = reduceChordGroup(group, reduction);
     removedChordNotes += group.length - reduced.length;
-    const mappings = mapGroupWithIndex(
-      index,
-      reduced,
-      transposition,
-      reduction,
-      preferredMidi,
-    );
+    const mappings = mapGroupWithIndex(index, reduced, transposition, reduction, preferredMidi);
     const lanes = new Set<number>();
     const mappedMidis: number[] = [];
 
@@ -456,9 +454,7 @@ export function analyzeMidiNotes(
     chordCount,
     durationMs,
     playableRatio:
-      notes.length - removedChordNotes > 0
-        ? playableCount / (notes.length - removedChordNotes)
-        : 0,
+      notes.length - removedChordNotes > 0 ? playableCount / (notes.length - removedChordNotes) : 0,
     unsupportedLabels: [...unsupportedLabels],
   };
 }
@@ -479,13 +475,7 @@ function scoreWithReduction(
 
   for (const group of groups) {
     const reduced = reduceChordGroup(group, reduction);
-    const mappings = mapGroupWithIndex(
-      index,
-      reduced,
-      transposition,
-      reduction,
-      preferredMidi,
-    );
+    const mappings = mapGroupWithIndex(index, reduced, transposition, reduction, preferredMidi);
     const mappedMidis: number[] = [];
     for (const mapping of mappings) {
       if (mapping.tine) {
@@ -578,10 +568,7 @@ export function suggestTransposition(
 
     const distanceFromCenter = Math.abs(average + transposition - center);
     const score =
-      playable * 1000 +
-      inScale * 5 -
-      Math.abs(transposition) * 2 -
-      distanceFromCenter * 0.3;
+      playable * 1000 + inScale * 5 - Math.abs(transposition) * 2 - distanceFromCenter * 0.3;
 
     if (score > bestScore) {
       bestScore = score;
@@ -634,22 +621,13 @@ export function buildMidiTimeline(
   const events: TimelineEvent[] = groups.map((group, eventIndex) => {
     const reduced = reduceChordGroup(group, reduction);
     const startMs = countInMs + Math.max(0, group[0].startMs - firstStartMs) * scale;
-    const durationMs = Math.max(
-      60,
-      Math.max(...reduced.map((note) => note.durationMs)) * scale,
-    );
+    const durationMs = Math.max(60, Math.max(...reduced.map((note) => note.durationMs)) * scale);
     const playableNotes: Array<{ lane: number; label: string }> = [];
     const lanes = new Set<number>();
     const labels: string[] = [];
     const soundNotes = new Set<number>();
     const unsupported: ParsedNote[] = [];
-    const mappings = mapGroupWithIndex(
-      index,
-      reduced,
-      transposition,
-      reduction,
-      preferredMidi,
-    );
+    const mappings = mapGroupWithIndex(index, reduced, transposition, reduction, preferredMidi);
     const mappedMidis: number[] = [];
 
     mappings.forEach((mapping, noteIndex) => {
@@ -698,9 +676,7 @@ export function buildMidiTimeline(
   if (data.notes.length > 0) {
     endMs =
       Math.max(
-        ...data.notes.map(
-          (note) => Math.max(0, note.startMs - firstStartMs) + note.durationMs,
-        ),
+        ...data.notes.map((note) => Math.max(0, note.startMs - firstStartMs) + note.durationMs),
       ) * scale;
   }
 

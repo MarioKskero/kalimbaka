@@ -19,11 +19,15 @@
         [beatsVisible]="beatsVisible()"
         [loop]="loop()"
         [keyLabels]="keyboardLabels()"
-        [manualLanes]="pressedLanes()"
+        [manualLanes]="manualLanes()"
+        [noteColors]="noteColors()"
+        [tineColors]="tineColors()"
         (tick)="onTick($event)"
         (beat)="onBeat($event)"
         (noteHit)="onNoteHit($event)"
         (finished)="onFinished()"
+        (lanePress)="onLanePress($event)"
+        (laneRelease)="onLaneRelease($event)"
       />
 
       <header class="player-top">
@@ -118,6 +122,47 @@
             <button
               class="icon-btn"
               type="button"
+              [class.icon-btn--active]="colorEdit()"
+              [attr.aria-pressed]="colorEdit()"
+              aria-label="Editar colores de notas"
+              title="Editar colores"
+              (click)="toggleColorEdit()"
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 3a9 9 0 1 0 0 18h1.2a1.8 1.8 0 0 0 0-3.6h-.5a2.4 2.4 0 0 1 0-4.8H16a5 5 0 0 0 0-10h-4Z"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linejoin="round"
+                />
+                <circle cx="7.5" cy="9" r="1.1" fill="currentColor" />
+                <circle cx="10" cy="6.2" r="1.1" fill="currentColor" />
+                <circle cx="14" cy="6.2" r="1.1" fill="currentColor" />
+                <circle cx="16.8" cy="9" r="1.1" fill="currentColor" />
+              </svg>
+            </button>
+            @if (fullscreen.supported && !fullscreen.isActive()) {
+              <button
+                class="icon-btn"
+                type="button"
+                aria-label="Pantalla completa"
+                title="Pantalla completa"
+                (click)="enterFullscreen()"
+              >
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            }
+            <button
+              class="icon-btn"
+              type="button"
               aria-label="Abrir ajustes y pausar"
               title="Ajustes y pausa"
               (click)="openSettingsMenu()"
@@ -193,6 +238,13 @@
                 Cambiar a {{ recommended() }} teclas
               </button>
             }
+          </div>
+        }
+
+        @if (colorEdit()) {
+          <div class="color-edit-banner">
+            <span>Toca una tecla de la kalimba inferior para cambiar su color.</span>
+            <button class="btn btn--soft" type="button" (click)="closeColorEdit()">Salir</button>
           </div>
         }
       </header>
@@ -619,6 +671,14 @@
                       Configurar MIDI
                     </button>
                   }
+                  @if (fullscreen.supported && !fullscreen.isActive()) {
+                    <button class="btn btn--ghost" type="button" (click)="enterFullscreen()">
+                      Pantalla completa
+                    </button>
+                  }
+                  <button class="btn btn--ghost" type="button" (click)="openColorEdit()">
+                    Colores
+                  </button>
                   <button class="btn btn--ghost" type="button" (click)="openSettings()">
                     Ajustes
                   </button>
@@ -644,6 +704,8 @@
         <app-calibration-view
           [layout]="layout()"
           [calibration]="currentCalibration()"
+          [noteColors]="noteColors()"
+          [tineColors]="tineColors()"
           (saved)="saveCalibration($event)"
           (closed)="closeCalibration()"
         />
@@ -688,6 +750,115 @@
       <button class="btn btn--primary" type="button" (click)="back()">
         Volver a la biblioteca
       </button>
+    </div>
+  }
+
+  @if (colorPickerTineData(); as tine) {
+    <div class="color-sheet-overlay" [class.color-sheet-overlay--ready]="colorSheetReady()">
+      <section
+        class="color-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="color-sheet-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="color-sheet__header">
+          <div>
+            <p class="eyebrow">Modo colores</p>
+            <h2 id="color-sheet-title">Color de la tecla {{ tine.id }}</h2>
+          </div>
+          <button class="icon-btn" type="button" aria-label="Cerrar" (click)="closeColorPicker()">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="m6 6 12 12M18 6 6 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </header>
+
+        <div class="color-sheet__actions">
+          <button class="btn btn--ghost" type="button" (click)="resetColor()">Restablecer</button>
+          <button class="btn btn--primary" type="button" (click)="closeColorPicker()">Listo</button>
+        </div>
+
+        <div class="color-sheet__current">
+          <span class="color-sheet__preview" [style.background]="colorPickerColor()"></span>
+          <div>
+            <span class="color-sheet__label">Color actual</span>
+            <strong>{{ colorPickerColor() }}</strong>
+          </div>
+        </div>
+
+        <p class="color-sheet__hint">
+          Solo esta tecla. Puedes repetir el mismo color en varias teclas.
+        </p>
+
+        <div class="color-sheet__grid">
+          @for (color of colorPresets; track color) {
+            <button
+              class="color-swatch"
+              type="button"
+              [class.color-swatch--active]="
+                colorPickerColor().toLowerCase() === color.toLowerCase()
+              "
+              [style.background]="color"
+              [attr.aria-label]="'Usar color ' + color"
+              (click)="setColor(color)"
+            ></button>
+          }
+        </div>
+
+        <div class="color-sheet__custom">
+          <span class="color-sheet__label">Personalizado</span>
+
+          <label class="color-range">
+            <span>Tono</span>
+            <input
+              class="color-range__input color-range__input--hue"
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              [value]="customHue()"
+              (input)="onHueInput($event)"
+            />
+            <strong>{{ customHue() }}°</strong>
+          </label>
+
+          <label class="color-range">
+            <span>Saturación</span>
+            <input
+              class="color-range__input"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              [value]="customSaturation()"
+              [style.background]="saturationGradient()"
+              (input)="onSaturationInput($event)"
+            />
+            <strong>{{ customSaturation() }}%</strong>
+          </label>
+
+          <label class="color-range">
+            <span>Brillo</span>
+            <input
+              class="color-range__input"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              [value]="customLightness()"
+              [style.background]="lightnessGradient()"
+              (input)="onLightnessInput($event)"
+            />
+            <strong>{{ customLightness() }}%</strong>
+          </label>
+        </div>
+      </section>
     </div>
   }
 

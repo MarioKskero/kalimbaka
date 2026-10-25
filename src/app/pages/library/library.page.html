@@ -36,6 +36,38 @@
         </svg>
         {{ midiLoading() ? 'Leyendo…' : 'Importar' }}
       </button>
+      @if (fullscreen.supported) {
+        <button
+          class="icon-btn"
+          type="button"
+          [class.icon-btn--active]="fullscreen.isActive()"
+          [attr.aria-label]="
+            fullscreen.isActive() ? 'Salir de pantalla completa' : 'Pantalla completa'
+          "
+          [title]="fullscreen.isActive() ? 'Salir de pantalla completa' : 'Pantalla completa'"
+          (click)="toggleFullscreen()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            @if (fullscreen.isActive()) {
+              <path
+                d="M9 4v5H4M15 4v5h5M20 15h-5v5M4 15h5v5"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            } @else {
+              <path
+                d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            }
+          </svg>
+        </button>
+      }
       <button class="icon-btn" type="button" aria-label="Ayuda" (click)="openHelp()">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
@@ -237,6 +269,8 @@
     <app-calibration-view
       [layout]="layout()"
       [calibration]="currentCalibration()"
+      [noteColors]="settings().noteColors"
+      [tineColors]="settings().tineColors"
       (saved)="saveCalibration($event)"
       (closed)="closeCalibration()"
     />

@@ -14,7 +14,7 @@
         class="calibration__lane"
         [style.left.px]="lane.x"
         [style.width.px]="lane.width"
-        [style.--note-color]="colorFor(lane.degree)"
+        [style.--note-color]="colorFor(lane.tineId, lane.degree)"
       >
         <div
           class="calibration__tine"
@@ -44,7 +44,12 @@
       </div>
       <button class="icon-btn" type="button" aria-label="Cerrar calibración" (click)="cancel()">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path
+            d="m6 6 12 12M18 6 6 18"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
         </svg>
       </button>
     </div>

@@ -214,7 +214,7 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
 ```
 
 - `midi`: nombre del archivo dentro de `public/songs/`. También puedes usar `file` con extensión `.mid`/`.midi`.
-- La entrada **no fija** pista, tamaño, BPM, transposición ni reducción. La app analiza el archivo y, la primera vez que pulses **Jugar**, abre el diálogo de configuración con el tamaño base del usuario, el BPM original del MIDI y la reducción sin pérdidas por defecto.
+- La entrada **no fija** pista, tamaño, BPM, transposición ni reducción. La app analiza el archivo y, la primera vez que pulses **Jugar**, abre el diálogo de configuración con el tamaño base del usuario, el BPM original del MIDI y la reducción recomendada (octavas, cromatismos y solo melodía).
 - La configuración elegida se guarda por canción y se muestra en **“Listo para tocar”**, donde también se puede cambiar.
 - En las demos MIDI, `title` y `artist` del índice siguen teniendo prioridad.
 
@@ -240,11 +240,11 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
    - tamaño de kalimba (parte del tamaño base del usuario);
    - BPM de reproducción (parte del BPM original del MIDI);
    - transposición (se calcula con **Auto** con la pista preseleccionada; puedes ajustarla a mano);
-   - reducción: octavas y cromatismos activos por defecto; quitar acordes opcional.
+   - reducción: octavas, cromatismos y quitar acordes activos por defecto; puedes desactivarlos.
 5. Revisa el informe de notas exactas, plegadas, ajustadas y omitidas.
 6. Guarda la configuración.
 
-En la primera configuración puedes pulsar **Aplicar recomendados** para restaurar la pista sugerida, el BPM original, el tamaño base, la reducción por defecto y la transposición Auto. Después el botón pasa a **Guardar configuración**; si cambias algo respecto a lo recomendado, vuelve a **Aplicar recomendados**.
+En la primera configuración puedes pulsar **Aplicar recomendados** para restaurar la pista sugerida, el BPM original, el tamaño base, la reducción recomendada (con **quitar acordes**) y la transposición Auto. Después el botón pasa a **Guardar configuración**; si cambias algo respecto a lo recomendado, vuelve a **Aplicar recomendados**. La **X** de al lado cierra y descarta los cambios.
 
 El MIDI se guarda con su fuente original para poder reconfigurarlo y, una vez configurado, con los datos estructurados de la pista elegida. La canción aparece etiquetada como **MIDI** y la biblioteca muestra el tamaño y BPM guardados. En **“Listo para tocar”** verás la pista, la transposición y la reducción, con un botón **Configurar MIDI** para cambiarlo.
 
@@ -288,13 +288,14 @@ La app informa de cada caso.
 ## Reproductor
 
 - **Tamaño de kalimba**: en tabs de texto se usa el elegido en la biblioteca. En MIDI configurado se usa el tamaño guardado con esa canción; se puede cambiar desde **Configurar MIDI** en “Listo para tocar”. Los avisos de notas que no caben siguen disponibles.
-- **Pantalla completa / landscape**: intenta fullscreen y bloqueo de orientación; en portrait muestra “Gira el móvil”.
+- **Pantalla completa / landscape**: se solicita en el primer gesto (los navegadores no permiten pedirla sin interacción). El botón de volver del reproductor lleva a la biblioteca **sin salir** de pantalla completa; el único control de la app para salir es el icono de pantalla completa de la biblioteca. También intenta bloquear la orientación; en portrait muestra “Gira el móvil”.
 - **Cuenta atrás**: 4 beats al empezar.
 - **Pausa**: el botón de pausa/play congela la pantalla sin abrir modal. Se cortan notas, metrónomo y cuentas atrás.
 - **Ajustes**: el engranaje pausa y abre la modal de configuración.
 - **Atrás**: durante la partida abre la modal de pausa/opciones.
 - **−10 s / +10 s**: barra superior y modal de pausa; también flechas izquierda/derecha.
 - **Sonido de notas**: toggle de altavoz. Las notas se sintetizan con WebAudio.
+- **Modo colores**: icono de paleta en la cabecera (o botón **Colores** en pausa). Pausa la guía y permite tocar una tina de la kalimba inferior para abrir una paleta táctil con muestras grandes, controles HSL personalizados y elegir el color individual de esa tecla. Puedes repetir el mismo color en varias.
 - **Tocar con teclado**: activa la entrada de teclado y muestra la tecla asignada sobre cada carril.
 - **Configurar teclado**: permite reasignar cada nota y restaurar el mapa por defecto. El mapa se comparte entre los tamaños de kalimba.
 - **Metrónomo**: opcional, independiente del sonido de notas.
@@ -304,7 +305,7 @@ La app informa de cada caso.
 - **Notas visibles**: 3–12 pulsos.
 - **Cuenta atrás al reanudar**: 0–4 pulsos.
 - **HUD superior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
-- **Línea de golpe al 94%** de la altura: los números de nota quedan junto al borde inferior.
+- **Línea de golpe al 86%** de la altura: debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la franja inferior (incluida la línea) para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez.
 - **Wake Lock**: intenta mantener la pantalla encendida.
 
 Atajos:
@@ -351,7 +352,7 @@ El icono del ojo en cada tarjeta abre el visor:
 Claves de `localStorage`:
 
 - `kalimbapp.songs.v1`: canciones importadas (texto y MIDI, incluida la fuente MIDI si existe).
-- `kalimbapp.settings.v1`: tamaño, BPM por defecto, articulación, metrónomo, sonido, loop, teclado, notas visibles y cuenta atrás al reanudar.
+- `kalimbapp.settings.v1`: tamaño, BPM por defecto, articulación, colores por nota/tecla, metrónomo, sonido, loop, teclado, notas visibles y cuenta atrás al reanudar.
 - `kalimbapp.calibration.v1`: calibración por tamaño.
 - `kalimbapp.keyboard.v1`: mapa de teclado manual.
 - `kalimbapp.builtin-midi.v2`: configuración elegida para las demos MIDI.
@@ -410,7 +411,7 @@ La suite cubre:
 - reducción y eliminación de acordes;
 - exportación aproximada a tab.
 
-Estado actual: **84 tests pasando** y build limpio.
+Estado actual: **90 tests pasando** y build limpio.
 
 No hay lint script ni runner E2E configurado. Prettier está instalado; puedes usar `npx prettier --write .` si lo necesitas.
 

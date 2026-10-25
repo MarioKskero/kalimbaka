@@ -45,6 +45,13 @@
   letter-spacing: -0.02em;
 }
 
+.dialog__header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .dialog__recommended {
   flex: 0 0 auto;
   min-height: 38px;

@@ -18,15 +18,23 @@ interface OrientationWithLock {
 @Injectable({ providedIn: 'root' })
 export class FullscreenService {
   private wakeLock: WakeLockSentinelLike | null = null;
-  private active = false;
+  private wantsFullscreen = false;
   private readonly activeState = signal(false);
 
   readonly isActive = this.activeState.asReadonly();
+  readonly supported =
+    typeof document !== 'undefined' &&
+    typeof document.documentElement.requestFullscreen === 'function' &&
+    document.fullscreenEnabled !== false;
 
   constructor() {
     if (typeof document !== 'undefined') {
+      this.activeState.set(!!document.fullscreenElement);
+      document.addEventListener('fullscreenchange', () => {
+        this.activeState.set(!!document.fullscreenElement);
+      });
       document.addEventListener('visibilitychange', () => {
-        if (this.active && document.visibilityState === 'visible' && !this.wakeLock) {
+        if (this.wantsFullscreen && document.visibilityState === 'visible' && !this.wakeLock) {
           void this.acquireWakeLock();
         }
       });
@@ -34,16 +42,19 @@ export class FullscreenService {
   }
 
   async enter(): Promise<void> {
-    this.active = true;
-    this.activeState.set(true);
+    this.wantsFullscreen = true;
 
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
+    if (this.supported) {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
+        }
+      } catch {
+        // iOS Safari y algunos navegadores no permiten fullscreen.
       }
-    } catch {
-      // iOS Safari y algunos navegadores no permiten fullscreen.
     }
+
+    this.activeState.set(!!document.fullscreenElement);
 
     try {
       const orientation = screen.orientation as unknown as OrientationWithLock | undefined;
@@ -56,7 +67,7 @@ export class FullscreenService {
   }
 
   async exit(): Promise<void> {
-    this.active = false;
+    this.wantsFullscreen = false;
     this.activeState.set(false);
     await this.releaseWakeLock();
 
@@ -71,18 +82,10 @@ export class FullscreenService {
 
   async toggleFullscreen(): Promise<void> {
     if (document.fullscreenElement) {
-      try {
-        await document.exitFullscreen();
-      } catch {
-        // Ignorar.
-      }
+      await this.exit();
       return;
     }
-    try {
-      await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
-    } catch {
-      // Ignorar.
-    }
+    await this.enter();
   }
 
   private async acquireWakeLock(): Promise<void> {

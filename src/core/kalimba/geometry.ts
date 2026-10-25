@@ -1,12 +1,6 @@
-import {
-  Calibration,
-  KalimbaLayout,
-  LaneGeometry,
-  PlayfieldGeometry,
-  Viewport,
-} from './types';
+import { Calibration, KalimbaLayout, LaneGeometry, PlayfieldGeometry, Viewport } from './types';
 
-export const PLAYFIELD_HIT_LINE_RATIO = 0.94;
+export const PLAYFIELD_HIT_LINE_RATIO = 0.86;
 
 export interface GeometryOptions {
   hitLineRatio?: number;

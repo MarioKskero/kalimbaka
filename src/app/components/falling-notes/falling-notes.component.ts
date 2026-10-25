@@ -5,6 +5,7 @@ import {
   DestroyRef,
   effect,
   ElementRef,
+  HostListener,
   inject,
   input,
   OnDestroy,
@@ -15,10 +16,12 @@ import {
   Calibration,
   computeGeometry,
   KalimbaLayout,
+  NOTE_COLORS,
   PLAYFIELD_HIT_LINE_RATIO,
   noteColor,
   Timeline,
   TimelineEvent,
+  Tine,
   Viewport,
 } from '../../../core/kalimba';
 
@@ -49,7 +52,15 @@ function eventIsActive(event: TimelineEvent, timeMs: number, beatMs: number): bo
 
 @Component({
   selector: 'app-falling-notes',
-  template: '<canvas #canvas class="falling-canvas" aria-hidden="true"></canvas>',
+  template: `<canvas
+    #canvas
+    class="falling-canvas"
+    aria-hidden="true"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointercancel)="onPointerUp($event)"
+  ></canvas>`,
   styles: `
     :host {
       position: absolute;
@@ -76,13 +87,19 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   readonly showLabels = input(true);
   readonly keyLabels = input<readonly (string | null)[]>([]);
   readonly manualLanes = input<readonly number[]>([]);
+  readonly noteColors = input<readonly string[]>(NOTE_COLORS);
+  readonly tineColors = input<Readonly<Record<string, string>>>({});
 
   readonly tick = output<PlaybackTick>();
   readonly beat = output<BeatTick>();
   readonly noteHit = output<TimelineEvent>();
   readonly finished = output<void>();
+  readonly lanePress = output<number>();
+  readonly laneRelease = output<number>();
 
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
+  private readonly pointerLanes = new Map<number, number>();
+  private readonly activePointers = new Set<number>();
   private readonly destroyRef = inject(DestroyRef);
 
   private ctx: CanvasRenderingContext2D | null = null;
@@ -111,6 +128,8 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       this.showLabels();
       this.keyLabels();
       this.manualLanes();
+      this.noteColors();
+      this.tineColors();
       this.loop();
       if (!this.running) {
         this.draw(this.lastTimeMs);
@@ -139,6 +158,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   }
 
   play(fromMs = 0): void {
+    this.clearPointers();
     this.cancelFrame();
     this.offsetMs = clamp(fromMs, 0, this.timeline().totalMs);
     this.startPerf = performance.now();
@@ -181,6 +201,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   }
 
   pause(): void {
+    this.clearPointers();
     if (!this.running) {
       return;
     }
@@ -201,6 +222,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   }
 
   stop(): void {
+    this.clearPointers();
     this.running = false;
     this.cancelFrame();
     this.offsetMs = 0;
@@ -208,6 +230,59 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     this.previousTimeMs = -1;
     this.lastBeatIndex = -1;
     this.draw(0);
+  }
+
+  onPointerDown(event: PointerEvent): void {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+    const point = this.localPoint(event);
+    const geometry = this.currentGeometry();
+    if (!this.isInTouchBand(point.y, geometry)) {
+      return;
+    }
+    const laneIndex = this.laneAt(point.x, geometry);
+    if (laneIndex === null) {
+      return;
+    }
+    event.preventDefault();
+    this.activePointers.add(event.pointerId);
+    this.pointerLanes.set(event.pointerId, laneIndex);
+    this.lanePress.emit(laneIndex);
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      // Algunos navegadores no permiten capturar el puntero.
+    }
+  }
+
+  onPointerMove(event: PointerEvent): void {
+    if (!this.activePointers.has(event.pointerId)) {
+      return;
+    }
+    const current = this.pointerLanes.get(event.pointerId);
+    const point = this.localPoint(event);
+    const geometry = this.currentGeometry();
+    const inBand = this.isInTouchBand(point.y, geometry);
+    const laneIndex = inBand ? this.laneAt(point.x, geometry) : null;
+    if (laneIndex === current) {
+      return;
+    }
+    this.releasePointer(event.pointerId);
+    if (laneIndex !== null) {
+      this.pointerLanes.set(event.pointerId, laneIndex);
+      this.lanePress.emit(laneIndex);
+    }
+  }
+
+  onPointerUp(event: PointerEvent): void {
+    this.releasePointer(event.pointerId);
+    this.activePointers.delete(event.pointerId);
+  }
+
+  @HostListener('window:blur')
+  onWindowBlur(): void {
+    this.clearPointers();
   }
 
   get isRunning(): boolean {
@@ -385,10 +460,133 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     ctx.fillStyle = stage;
     ctx.fillRect(0, 0, width, height);
 
+    this.drawKalimba(ctx, geometry, timeMs, activeLanes);
     this.drawHitLineGlow(ctx, geometry);
     this.drawLanes(ctx, geometry, timeMs, activeLanes);
     this.drawNotes(ctx, geometry, timeline, timeMs, pxPerMs, beatMs);
     this.drawHitLine(ctx, geometry);
+  }
+
+  private drawKalimba(
+    ctx: CanvasRenderingContext2D,
+    geometry: ReturnType<typeof computeGeometry>,
+    timeMs: number,
+    activeLanes: Set<number>,
+  ): void {
+    const first = geometry.lanes[0];
+    const last = geometry.lanes[geometry.lanes.length - 1];
+    if (!first || !last) {
+      return;
+    }
+    const top = geometry.hitLineY + 3;
+    const bottom = this.viewport.height - 6;
+    if (bottom - top < 24) {
+      return;
+    }
+    const left = Math.max(0, first.x - geometry.spacing * 0.5);
+    const right = Math.min(this.viewport.width, last.x + geometry.spacing * 0.5);
+    const centerIndex = this.layout().tines.findIndex((tine) => tine.side === 'center');
+    const centerX = geometry.lanes[centerIndex]?.x ?? (left + right) / 2;
+    const maxDistance = Math.max(1, centerIndex, this.layout().tines.length - 1 - centerIndex);
+
+    const body = ctx.createLinearGradient(0, top, 0, bottom);
+    body.addColorStop(0, 'rgba(86, 57, 36, 0.96)');
+    body.addColorStop(0.5, 'rgba(42, 27, 18, 0.98)');
+    body.addColorStop(1, 'rgba(15, 10, 8, 1)');
+    ctx.beginPath();
+    ctx.moveTo(left + 14, top + 7);
+    ctx.quadraticCurveTo(centerX, top - 7, right - 14, top + 7);
+    ctx.lineTo(right, bottom - 13);
+    ctx.quadraticCurveTo(right, bottom, right - 13, bottom);
+    ctx.lineTo(left + 13, bottom);
+    ctx.quadraticCurveTo(left, bottom, left, bottom - 13);
+    ctx.closePath();
+    ctx.fillStyle = body;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const keyTopBase = top + 5;
+    const keyBottom = bottom - 12;
+    const keyHeight = Math.max(0, keyBottom - keyTopBase);
+    const maxOffset = Math.min(keyHeight * 0.34, 18);
+
+    geometry.lanes.forEach((lane, index) => {
+      const tine = this.layout().tines[index];
+      if (!tine) {
+        return;
+      }
+      const distance = Math.abs(index - centerIndex);
+      const keyTop = keyTopBase + Math.min(maxOffset, (distance / maxDistance) * maxOffset);
+      if (keyBottom - keyTop < 13) {
+        return;
+      }
+      const isCenter = index === centerIndex;
+      const width = Math.max(16, lane.width * (isCenter ? 1.02 : 0.86));
+      const keyLeft = lane.x - width / 2;
+      const color = this.colorFor(tine);
+      const active = activeLanes.has(lane.laneIndex);
+      const pulse = active ? 0.5 + 0.5 * Math.sin(timeMs / 90) : 0;
+
+      if (keyTop > geometry.hitLineY + 5) {
+        ctx.strokeStyle = this.alpha(isCenter ? '#fbbf24' : color, isCenter ? 0.45 : 0.16);
+        ctx.lineWidth = isCenter ? 1.5 : 1;
+        ctx.beginPath();
+        ctx.moveTo(lane.x, geometry.hitLineY + 2);
+        ctx.lineTo(lane.x, keyTop);
+        ctx.stroke();
+      }
+
+      ctx.save();
+      if (active) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 18 + pulse * 8;
+      }
+      const metal = ctx.createLinearGradient(keyLeft, 0, keyLeft + width, 0);
+      metal.addColorStop(0, 'rgba(148, 163, 184, 0.18)');
+      metal.addColorStop(0.38, this.alpha(color, active ? 0.94 : 0.58));
+      metal.addColorStop(0.64, this.alpha(color, active ? 0.64 : 0.34));
+      metal.addColorStop(1, 'rgba(100, 116, 139, 0.14)');
+      ctx.fillStyle = metal;
+      this.roundedRect(ctx, keyLeft, keyTop, width, keyBottom - keyTop, Math.min(10, width / 2));
+      ctx.fill();
+      ctx.restore();
+
+      ctx.strokeStyle = isCenter
+        ? 'rgba(251, 191, 36, 0.95)'
+        : this.alpha(color, active ? 0.95 : 0.52);
+      ctx.lineWidth = isCenter || active ? 2 : 1;
+      ctx.beginPath();
+      ctx.roundRect(keyLeft, keyTop, width, keyBottom - keyTop, Math.min(10, width / 2));
+      ctx.stroke();
+
+      ctx.fillStyle = this.contrastColor(color);
+      ctx.font = `800 ${clamp(width * 0.36, 9, 15)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(tine.id, lane.x, (keyTop + keyBottom) / 2);
+    });
+
+    const bridgeHeight = 5;
+    const bridgeTop = keyBottom - 9;
+    const bridge = ctx.createLinearGradient(0, bridgeTop, 0, bridgeTop + bridgeHeight);
+    bridge.addColorStop(0, 'rgba(226, 232, 240, 0.58)');
+    bridge.addColorStop(0.5, 'rgba(148, 163, 184, 0.3)');
+    bridge.addColorStop(1, 'rgba(15, 23, 42, 0.85)');
+    ctx.fillStyle = bridge;
+    this.roundedRect(ctx, left + 7, bridgeTop, Math.max(0, right - left - 14), bridgeHeight, 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.95)';
+    ctx.beginPath();
+    ctx.arc(centerX, bridgeTop + bridgeHeight / 2, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.72)';
+    ctx.font = `700 ${clamp((right - left) * 0.018, 6, 8)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('CENTRAL', centerX, bottom - 2);
   }
 
   private drawLanes(
@@ -404,7 +602,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       if (!tine) {
         return;
       }
-      const color = noteColor(tine.degree);
+      const color = this.colorFor(tine);
       const active = activeLanes.has(lane.laneIndex);
       const pulse = active ? 0.5 + 0.5 * Math.sin(timeMs / 90) : 0;
       const tineWidth = Math.max(5, lane.width * 0.34);
@@ -458,6 +656,14 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       ctx.strokeStyle = this.alpha(color, active ? 1 : 0.55);
       ctx.stroke();
 
+      if (tine.side === 'center') {
+        ctx.beginPath();
+        ctx.arc(lane.x, geometry.hitLineY, targetRadius + 3.5, 0, Math.PI * 2);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+        ctx.stroke();
+      }
+
       if (active) {
         ctx.beginPath();
         ctx.arc(lane.x, geometry.hitLineY, targetRadius + 5 + pulse * 4, 0, Math.PI * 2);
@@ -491,7 +697,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     beatMs: number,
   ): void {
     const topLimit = geometry.tineTopY - 80;
-    const bottomLimit = geometry.hitLineY + 90;
+    const bottomLimit = geometry.hitLineY + 30;
 
     for (const event of timeline.events) {
       if (event.isRest || event.playableNotes.length === 0) {
@@ -504,7 +710,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       }
 
       const active = eventIsActive(event, timeMs, beatMs);
-      const pastFade = age > 0 ? clamp(1 - age / 420, 0, 1) : 1;
+      const pastFade = age > 0 ? clamp(1 - age / 260, 0, 1) : 1;
       if (pastFade <= 0) {
         continue;
       }
@@ -541,7 +747,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
         if (!tine) {
           continue;
         }
-        const color = noteColor(tine.degree);
+        const color = this.colorFor(tine);
 
         ctx.save();
         ctx.globalAlpha = pastFade;
@@ -571,7 +777,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
 
         ctx.save();
         ctx.globalAlpha = pastFade;
-        ctx.fillStyle = '#05070f';
+        ctx.fillStyle = this.contrastColor(color);
         ctx.font = `800 ${clamp(noteHeight * 0.52, 10, 18)}px system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -637,6 +843,23 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     ctx.roundRect(x, y, width, height, safeRadius);
   }
 
+  private colorFor(tine: Tine): string {
+    return (
+      this.tineColors()[tine.id] ?? this.noteColors()[tine.degree - 1] ?? noteColor(tine.degree)
+    );
+  }
+
+  private contrastColor(color: string): string {
+    if (!/^#[0-9a-f]{6}$/i.test(color)) {
+      return '#05070f';
+    }
+    const red = Number.parseInt(color.slice(1, 3), 16);
+    const green = Number.parseInt(color.slice(3, 5), 16);
+    const blue = Number.parseInt(color.slice(5, 7), 16);
+    const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
+    return luminance > 0.6 ? '#05070f' : '#f8fafc';
+  }
+
   private alpha(color: string, alpha: number): string {
     if (color.startsWith('#') && color.length === 7) {
       const r = Number.parseInt(color.slice(1, 3), 16);
@@ -667,9 +890,56 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   }
 
   private cleanup(): void {
+    this.clearPointers();
     this.running = false;
     this.cancelFrame();
     this.observer?.disconnect();
     this.observer = null;
+  }
+
+  private currentGeometry(): ReturnType<typeof computeGeometry> {
+    return computeGeometry(this.layout(), this.viewport, this.calibration(), {
+      hitLineRatio: PLAYFIELD_HIT_LINE_RATIO,
+    });
+  }
+
+  private localPoint(event: PointerEvent): { x: number; y: number } {
+    const rect = this.canvasRef().nativeElement.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  }
+
+  private isInTouchBand(y: number, geometry: ReturnType<typeof computeGeometry>): boolean {
+    const top = geometry.hitLineY - Math.max(36, this.viewport.height * 0.06);
+    return y >= top && y <= this.viewport.height;
+  }
+
+  private laneAt(x: number, geometry: ReturnType<typeof computeGeometry>): number | null {
+    let best: number | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const lane of geometry.lanes) {
+      const distance = Math.abs(x - lane.x);
+      if (distance < bestDistance) {
+        best = lane.laneIndex;
+        bestDistance = distance;
+      }
+    }
+    return bestDistance <= geometry.spacing * 0.55 ? best : null;
+  }
+
+  private releasePointer(pointerId: number): void {
+    const laneIndex = this.pointerLanes.get(pointerId);
+    if (laneIndex === undefined) {
+      return;
+    }
+    this.pointerLanes.delete(pointerId);
+    this.laneRelease.emit(laneIndex);
+  }
+
+  private clearPointers(): void {
+    for (const laneIndex of this.pointerLanes.values()) {
+      this.laneRelease.emit(laneIndex);
+    }
+    this.pointerLanes.clear();
+    this.activePointers.clear();
   }
 }
