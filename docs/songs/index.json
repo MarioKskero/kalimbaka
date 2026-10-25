@@ -121,6 +121,12 @@
       "title": "Imagine Dragons - Radioactive 2",
       "artist": "Imagine Dragons",
       "midi": "Imagine Dragons/Imagine Dragons - Radioactive 2.mid"
+    },
+    {
+      "id": "a-ha-take-on-me",
+      "title": "a-ha - Take On Me",
+      "artist": "a-ha",
+      "midi": "a-ha/a-ha - Take on Me.mid"
     }
   ]
 }
