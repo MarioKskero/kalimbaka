@@ -85,11 +85,12 @@ En la biblioteca puedes:
 
 - cambiar el tamaño de kalimba;
 - ajustar BPM por defecto y articulación;
-- importar tabs de texto, varios archivos o un MIDI;
+- importar tabs de texto o MIDI con el botón **Importar**;
 - calibrar;
 - abrir la guía de uso;
-- ver el tab con el icono del ojo;
-- exportar la biblioteca importada a JSON.
+- ver el tab con el icono del ojo.
+
+El botón **Importar** acepta `.txt`/`.kalimba` como tab, `.json` como biblioteca y `.mid`/`.midi` como MIDI. También permite pegar un tab.
 
 ---
 
@@ -231,17 +232,19 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
 
 ### Importación manual
 
-1. Pulsa **Importar MIDI** en la biblioteca.
+1. Pulsa **Importar** en la cabecera.
 2. Elige un `.mid` o `.midi`.
-3. La canción se añade como **MIDI sin configurar**. No se selecciona la pista automáticamente.
+3. La canción se añade como **MIDI sin configurar**. Se preselecciona la melodía probable; puedes cambiarla.
 4. Pulsa **Jugar**. La primera vez se abre el diálogo de configuración:
    - pista/canal (la percusión se ignora);
    - tamaño de kalimba (parte del tamaño base del usuario);
    - BPM de reproducción (parte del BPM original del MIDI);
-   - transposición (se calcula con **Auto** al elegir pista; puedes ajustarla a mano);
+   - transposición (se calcula con **Auto** con la pista preseleccionada; puedes ajustarla a mano);
    - reducción: octavas y cromatismos activos por defecto; quitar acordes opcional.
 5. Revisa el informe de notas exactas, plegadas, ajustadas y omitidas.
 6. Guarda la configuración.
+
+En la primera configuración puedes pulsar **Aplicar recomendados** para restaurar la pista sugerida, el BPM original, el tamaño base, la reducción por defecto y la transposición Auto. Después el botón pasa a **Guardar configuración**; si cambias algo respecto a lo recomendado, vuelve a **Aplicar recomendados**.
 
 El MIDI se guarda con su fuente original para poder reconfigurarlo y, una vez configurado, con los datos estructurados de la pista elegida. La canción aparece etiquetada como **MIDI** y la biblioteca muestra el tamaño y BPM guardados. En **“Listo para tocar”** verás la pista, la transposición y la reducción, con un botón **Configurar MIDI** para cambiarlo.
 
@@ -255,7 +258,7 @@ El MIDI se guarda con su fuente original para poder reconfigurarlo y, una vez co
 - Se usa el tempo inicial del MIDI. Los cambios internos de tempo no se reflejan en el metrónomo.
 - La transposición se calcula con **Auto** al elegir la pista; puedes ajustarla a mano y volver a pedir la sugerencia.
 - Las notas que no caben se pueden plegar de octava, ajustar de semitono o quitar con la reducción.
-- Las canciones MIDI también se exportan/importan en el JSON de biblioteca, incluyendo la fuente original si existe.
+- Los JSON de biblioteca se pueden importar desde **Importar**; los MIDI incluyen la fuente original si existe.
 
 ### Reducción sin pérdidas
 
@@ -267,7 +270,7 @@ Con `foldOctaves` y `snapChromatic` activos:
 - **Acordes**: se reparten entre teclas sin repetir; si hay colisión se busca otra opción.
 - **Quitar acordes**: opcional; conserva la nota más aguda de cada grupo simultáneo.
 
-En la demo de Monkey Island, el diálogo no preselecciona la pista. Elige una pista: la transposición se calcula con **Auto** y puedes ajustarla o volver a pedir la sugerencia. Revisa el informe antes de guardar; la configuración queda guardada para esa canción.
+En la demo de Monkey Island, el diálogo preselecciona la melodía probable. Puedes cambiar la pista: la transposición se calcula con **Auto** y puedes ajustarla o volver a pedir la sugerencia. Revisa el informe antes de guardar; la configuración queda guardada para esa canción.
 
 ### Qué se pierde
 

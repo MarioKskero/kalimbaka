@@ -669,6 +669,7 @@
         [initialTransposition]="midiConfigTransposition()"
         [initialReduction]="midiConfigReduction()"
         mode="configure"
+        [firstConfig]="!song.midi"
         [showMetadata]="!song.builtIn"
         submitLabel="Guardar configuración"
         (submitted)="applyMidiConfig($event)"

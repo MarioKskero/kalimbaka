@@ -120,20 +120,6 @@ export class LibraryPage {
     this.showImport.set(true);
   }
 
-  onMidiFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) {
-      return;
-    }
-    if (!/\.(mid|midi)$/i.test(file.name)) {
-      this.notify('error', 'Selecciona un archivo .mid o .midi.');
-      return;
-    }
-    void this.importMidiFile(file);
-  }
-
   closeImport(): void {
     this.showImport.set(false);
   }
@@ -148,30 +134,13 @@ export class LibraryPage {
     }
   }
 
-  async onFilesSelected(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length) {
+  handleImportFile(file: File): void {
+    this.showImport.set(false);
+    if (/\.(mid|midi)$/i.test(file.name)) {
+      void this.importMidiFile(file);
       return;
     }
-    await this.importFiles(input.files);
-    input.value = '';
-  }
-
-  async onDrop(event: DragEvent): Promise<void> {
-    event.preventDefault();
-    const files = event.dataTransfer?.files;
-    if (!files?.length) {
-      return;
-    }
-    if (files.length === 1 && /\.(mid|midi)$/i.test(files[0].name)) {
-      void this.importMidiFile(files[0]);
-      return;
-    }
-    await this.importFiles(files);
-  }
-
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
+    void this.importFiles([file]);
   }
 
   private async importMidiFile(file: File): Promise<void> {
@@ -190,7 +159,7 @@ export class LibraryPage {
     }
   }
 
-  async importFiles(files: FileList | readonly File[]): Promise<void> {
+  private async importFiles(files: FileList | readonly File[]): Promise<void> {
     const result = await this.library.importFiles(files);
     if (result.imported.length > 0) {
       this.notify(
@@ -219,15 +188,6 @@ export class LibraryPage {
     }
     this.library.removeSong(id);
     this.notify('ok', 'Tab eliminado.');
-  }
-
-  exportLibrary(): void {
-    if (this.importedCount() === 0) {
-      this.notify('error', 'Todavía no has importado ningún tab.');
-      return;
-    }
-    this.library.exportLibrary();
-    this.notify('ok', 'Biblioteca exportada como JSON.');
   }
 
   openTabViewer(id: string): void {

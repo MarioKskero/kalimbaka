@@ -229,14 +229,15 @@ Orden:
 
 - `MidiImportService` separa pistas/canales con @tonejs/midi.
 - Se ignora percusión en el diálogo (canal 9 zero-based).
-- Se sugiere melodía por altura media, número de notas, monofonía e instrumento, pero no se selecciona automáticamente.
-- El catálogo MIDI no fija pista; el usuario la elige en la configuración de la canción.
+- Se sugiere melodía por altura media, número de notas, monofonía e instrumento y se preselecciona al configurar la canción; el usuario puede cambiarla.
+- El catálogo MIDI no fija pista.
 
 ## 11. Reproductor
 
 - El canvas dibuja y emite `noteHit` al cruzar `startMs`; el audio usa ese evento.
 - En texto, el reproductor usa `settings.kalimbaSize`; en MIDI configurado usa `Song.kalimbaSize`. En MIDI sin configurar usa el tamaño base de ajustes y abre el diálogo de configuración antes de crear el timeline.
-- El diálogo MIDI parte del BPM original del MIDI y de la reducción sin pérdidas (`DEFAULT_MIDI_REDUCTION`). La pista no se selecciona automáticamente; la transposición se calcula con **Auto** al elegir pista y se puede ajustar a mano.
+- El diálogo MIDI parte del BPM original del MIDI y de la reducción sin pérdidas (`DEFAULT_MIDI_REDUCTION`). La pista se preselecciona con la melodía probable; la transposición se calcula con **Auto** y se puede ajustar a mano.
+- En la primera configuración, el diálogo ofrece **Aplicar recomendados**: pista sugerida, BPM original, tamaño base, reducción por defecto y transposición Auto. Tras aplicarlo, el botón pasa a **Guardar configuración**; si la configuración deja de coincidir con la recomendada, vuelve a **Aplicar recomendados**.
 - La configuración MIDI se guarda en la canción. **“Listo para tocar”** debe mostrar pista, transposición y reducción, y permitir reabrir el diálogo con **Configurar MIDI**.
 - Mantén los avisos y el selector de tamaño en canciones de texto. En MIDI configurado, el tamaño se cambia desde **Configurar MIDI**, no desde el selector global.
 - El tick del HUD se emite a ~15 fps.
@@ -364,7 +365,7 @@ La UI/canvas no tiene tests automatizados. Para cambios visuales, prueba manualm
 - `Song.tabText` vacío es normal en MIDI; bifurca por `song.midi` y `song.midiSource`.
 - Un MIDI sin configurar tiene `midiSource` pero no `midi`; el reproductor debe abrir la configuración y no mostrar “tab sin notas”.
 - El visor muestra el tab de texto original; el MIDI configurado muestra notas, no un tab normal. Un MIDI pendiente no tiene visor.
-- No vuelvas a fijar pista/transposición/reducción en el catálogo MIDI. La pista no se autoselecciona; la transposición se sugiere con Auto en la primera configuración.
+- No vuelvas a fijar pista/transposición/reducción en el catálogo MIDI. La pista se preselecciona con la melodía probable; la transposición se sugiere con Auto en la primera configuración.
 - El formato de texto MIDI personalizado se retiró; no lo reintroduzcas sin pedirlo.
 - La app no tiene PWA/service worker ni detección por micrófono.
 - Las demos musicales tienen derechos de sus autores; no añadas contenido sin permiso.

@@ -18,16 +18,38 @@
         </h2>
         <p class="dialog__subtitle">{{ file().name }}</p>
       </div>
-      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="m6 6 12 12M18 6 6 18"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          />
-        </svg>
-      </button>
+      @if (firstConfig()) {
+        @if (recommendedApplied() && isRecommendedConfig()) {
+          <button
+            class="btn btn--primary dialog__recommended"
+            type="button"
+            [disabled]="loading() || !canSubmit()"
+            (click)="submit()"
+          >
+            Guardar configuración
+          </button>
+        } @else {
+          <button
+            class="btn btn--soft dialog__recommended"
+            type="button"
+            [disabled]="loading()"
+            (click)="applyRecommended()"
+          >
+            Aplicar recomendados
+          </button>
+        }
+      } @else {
+        <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="m6 6 12 12M18 6 6 18"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      }
     </header>
 
     @if (loading()) {

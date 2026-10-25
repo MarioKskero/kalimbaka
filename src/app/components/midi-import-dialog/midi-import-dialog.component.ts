@@ -41,6 +41,7 @@ export class MidiImportDialogComponent implements OnInit {
   readonly initialTransposition = input<number | null>(null);
   readonly initialReduction = input<MidiReduction | null>(null);
   readonly mode = input<'import' | 'configure'>('import');
+  readonly firstConfig = input(false);
   readonly showMetadata = input(true);
   readonly submitLabel = input<string>('Importar MIDI');
 
@@ -110,6 +111,43 @@ export class MidiImportDialogComponent implements OnInit {
   readonly canSubmit = computed(
     () => !!this.selectedPart() && (this.stats()?.playableCount ?? 0) > 0,
   );
+  readonly recommendedApplied = signal(false);
+  readonly recommendedPart = computed(() => {
+    const analysis = this.analysis();
+    if (!analysis) {
+      return null;
+    }
+    return (
+      analysis.parts.find((part) => part.id === analysis.suggestedPartId) ??
+      analysis.parts.find((part) => !part.isDrum) ??
+      null
+    );
+  });
+  readonly recommendedTransposition = computed(() => {
+    const part = this.recommendedPart();
+    if (!part) {
+      return 0;
+    }
+    return suggestTransposition(part.notes, getLayout(this.initialSize()), DEFAULT_MIDI_REDUCTION)
+      .transposition;
+  });
+  readonly isRecommendedConfig = computed(() => {
+    const analysis = this.analysis();
+    const part = this.recommendedPart();
+    if (!analysis || !part) {
+      return false;
+    }
+    const reduction = DEFAULT_MIDI_REDUCTION;
+    return (
+      this.selectedPartId() === part.id &&
+      this.bpm() === analysis.bpm &&
+      this.size() === this.initialSize() &&
+      this.foldOctaves() === reduction.foldOctaves &&
+      this.snapChromatic() === reduction.snapChromatic &&
+      this.removeChords() === (reduction.removeChords ?? false) &&
+      this.transposition() === this.recommendedTransposition()
+    );
+  });
 
   async ngOnInit(): Promise<void> {
     try {
@@ -127,7 +165,10 @@ export class MidiImportDialogComponent implements OnInit {
       this.removeChords.set(reduction.removeChords ?? false);
       this.transposition.set(this.initialTransposition() ?? 0);
 
-      const initialPart = this.findInitialPart(analysis.parts);
+      const initialPart =
+        this.findInitialPart(analysis.parts) ??
+        analysis.parts.find((part) => part.id === analysis.suggestedPartId) ??
+        analysis.parts.find((part) => !part.isDrum);
       this.selectedPartId.set(initialPart?.id ?? null);
       if (initialPart && this.autoTransposition()) {
         this.applySuggestion();
@@ -167,6 +208,23 @@ export class MidiImportDialogComponent implements OnInit {
   useSuggested(): void {
     this.manualTransposition.set(false);
     this.applySuggestion();
+  }
+
+  applyRecommended(): void {
+    const analysis = this.analysis();
+    if (!analysis) {
+      return;
+    }
+    const part = this.recommendedPart();
+    this.selectedPartId.set(part?.id ?? null);
+    this.bpm.set(analysis.bpm);
+    this.size.set(this.initialSize());
+    this.foldOctaves.set(DEFAULT_MIDI_REDUCTION.foldOctaves);
+    this.snapChromatic.set(DEFAULT_MIDI_REDUCTION.snapChromatic);
+    this.removeChords.set(DEFAULT_MIDI_REDUCTION.removeChords ?? false);
+    this.manualTransposition.set(false);
+    this.applySuggestion();
+    this.recommendedApplied.set(true);
   }
 
   toggleFoldOctaves(): void {

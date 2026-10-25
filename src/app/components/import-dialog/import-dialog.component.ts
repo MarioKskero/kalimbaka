@@ -29,6 +29,7 @@ export class ImportDialogComponent {
 
   readonly closed = output<void>();
   readonly submitted = output<ImportSongInput>();
+  readonly externalFile = output<File>();
 
   readonly text = signal('');
   readonly title = signal('');
@@ -40,9 +41,7 @@ export class ImportDialogComponent {
   readonly dragOver = signal(false);
 
   readonly parsed = computed(() => parseTab(this.text()));
-  readonly noteCount = computed(
-    () => this.parsed().events.filter((event) => !event.isRest).length,
-  );
+  readonly noteCount = computed(() => this.parsed().events.filter((event) => !event.isRest).length);
   readonly chordCount = computed(
     () => this.parsed().events.filter((event) => event.isChord).length,
   );
@@ -128,13 +127,20 @@ export class ImportDialogComponent {
   }
 
   private async loadFile(file: File): Promise<void> {
+    if (/\.(mid|midi|json)$/i.test(file.name)) {
+      this.externalFile.emit(file);
+      return;
+    }
     try {
       const content = await file.text();
       this.text.set(content);
       this.fileName.set(file.name);
       this.error.set(null);
       const parsed = parseTab(content);
-      const fallbackTitle = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+      const fallbackTitle = file.name
+        .replace(/\.[^.]+$/, '')
+        .replace(/[_-]+/g, ' ')
+        .trim();
       this.title.set(parsed.metadata.title || fallbackTitle);
       if (parsed.metadata.artist) {
         this.artist.set(parsed.metadata.artist);

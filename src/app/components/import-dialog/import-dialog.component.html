@@ -8,15 +8,22 @@
   >
     <header class="dialog__header">
       <div>
-        <p class="eyebrow">Biblioteca</p>
-        <h2 id="import-title">Importar tab</h2>
+        <p class="eyebrow">Importar</p>
+        <h2 id="import-title">Importar canción</h2>
         <p class="dialog__subtitle">
-          Pega las notas de KalimbaTabs o carga un archivo <code>.txt</code> / <code>.json</code>.
+          Carga un <code>.txt</code>/<code>.json</code> de KalimbaTabs o un
+          <code>.mid</code>/<code>.midi</code>. Los MIDI se configuran al pulsar Jugar. También
+          puedes pegar el tab abajo.
         </p>
       </div>
       <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path
+            d="m6 6 12 12M18 6 6 18"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
         </svg>
       </button>
     </header>
@@ -34,7 +41,7 @@
             #fileInput
             class="dropzone__input"
             type="file"
-            accept=".txt,.json,.kalimba,text/plain,application/json"
+            accept=".txt,.json,.kalimba,.mid,.midi,text/plain,application/json,audio/midi,audio/x-midi"
             (change)="onFileInput($event)"
           />
           <div class="dropzone__icon" aria-hidden="true">
@@ -56,7 +63,9 @@
                 Suelta un archivo o elige uno
               }
             </p>
-            <p class="dropzone__hint">También puedes pegar el tab abajo</p>
+            <p class="dropzone__hint">
+              Texto para previsualizar; MIDI/JSON se importan directamente
+            </p>
           </div>
           <button class="btn btn--soft" type="button" (click)="fileInput.click()">
             Elegir archivo
@@ -88,10 +97,7 @@
               <span class="preview__label">acordes</span>
             </div>
             <div>
-              <span
-                class="preview__value"
-                [class.preview__value--warning]="unsupported() > 0"
-              >
+              <span class="preview__value" [class.preview__value--warning]="unsupported() > 0">
                 {{ unsupported() }}
               </span>
               <span class="preview__label">no caben</span>

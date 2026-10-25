@@ -1,4 +1,4 @@
-<main class="library" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+<main class="library">
   <div class="library__halo" aria-hidden="true"></div>
 
   <header class="topbar">
@@ -25,7 +25,7 @@
     </div>
 
     <div class="topbar__actions">
-      <button class="btn btn--soft" type="button" (click)="openImport()">
+      <button class="btn btn--soft" type="button" [disabled]="midiLoading()" (click)="openImport()">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
             d="M12 5v14M5 12h14"
@@ -34,7 +34,7 @@
             stroke-linecap="round"
           />
         </svg>
-        Importar tab
+        {{ midiLoading() ? 'Leyendo…' : 'Importar' }}
       </button>
       <button class="icon-btn" type="button" aria-label="Ayuda" (click)="openHelp()">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -141,53 +141,6 @@
           <span class="toggle-row__switch" aria-hidden="true"></span>
         </button>
       </section>
-
-      <section class="panel">
-        <p class="eyebrow">Biblioteca</p>
-        <p class="panel__hint">
-          Importa varios <code>.txt</code> o <code>.json</code> a la vez, o carga un
-          <code>.mid</code>. La pista y la configuración se eligen al pulsar Jugar por primera vez.
-        </p>
-        <input
-          #midiInput
-          type="file"
-          accept=".mid,.midi,audio/midi,audio/x-midi"
-          hidden
-          (change)="onMidiFileSelected($event)"
-        />
-        <div class="sidebar__actions">
-          <button class="btn btn--soft" type="button" (click)="openImport()">Pegar un tab</button>
-          <button
-            class="btn btn--soft btn--midi"
-            type="button"
-            [disabled]="midiLoading()"
-            (click)="midiInput.click()"
-          >
-            {{ midiLoading() ? 'Leyendo…' : 'Importar MIDI' }}
-          </button>
-          <label class="btn btn--ghost file-button">
-            Cargar varios
-            <input
-              type="file"
-              multiple
-              accept=".txt,.json,.kalimba,text/plain,application/json"
-              (change)="onFilesSelected($event)"
-              hidden
-            />
-          </label>
-          <button class="btn btn--ghost" type="button" (click)="exportLibrary()">Exportar</button>
-        </div>
-      </section>
-
-      <section class="help-card">
-        <p class="eyebrow">Cómo funciona</p>
-        <ol>
-          <li>Elige tu kalimba y calibra el ancho de los carriles.</li>
-          <li>Coloca el móvil en un soporte delante del instrumento.</li>
-          <li>Pulsa Jugar y toca cada tecla cuando la nota llegue a la línea.</li>
-        </ol>
-        <button class="btn btn--ghost" type="button" (click)="openHelp()">Ver guía completa</button>
-      </section>
     </aside>
 
     <section class="content">
@@ -248,9 +201,9 @@
         <div class="empty">
           <div class="empty__icon" aria-hidden="true">♪</div>
           <h2>No hay tabs todavía</h2>
-          <p>Importa un tab de KalimbaTabs o pega las notas directamente.</p>
+          <p>Importa un tab de KalimbaTabs, un MIDI o pega las notas directamente.</p>
           <button class="btn btn--primary" type="button" (click)="openImport()">
-            Importar mi primer tab
+            Importar mi primera canción
           </button>
         </div>
       }
@@ -267,6 +220,7 @@
     <app-import-dialog
       [initialSize]="settings().kalimbaSize"
       (submitted)="handleImport($event)"
+      (externalFile)="handleImportFile($event)"
       (closed)="closeImport()"
     />
   }

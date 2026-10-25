@@ -109,8 +109,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 45%),
-    rgba(12, 20, 36, 0.78);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 45%), rgba(12, 20, 36, 0.78);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
 }
 
@@ -132,13 +131,6 @@
   color: var(--muted);
   font-size: 0.76rem;
   line-height: 1.5;
-}
-
-.panel__hint code {
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--text);
 }
 
 .panel__button {
@@ -225,45 +217,6 @@
 .toggle-row--on .toggle-row__switch::after {
   background: var(--cyan);
   transform: translateX(17px);
-}
-
-.sidebar__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.sidebar__actions .btn:first-child,
-.sidebar__actions .btn--midi {
-  grid-column: 1 / -1;
-}
-
-.file-button {
-  position: relative;
-}
-
-.help-card {
-  padding: 18px;
-  border: 1px solid rgba(245, 158, 11, 0.16);
-  border-radius: var(--radius);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(245, 158, 11, 0.1), transparent 55%),
-    rgba(20, 16, 10, 0.35);
-}
-
-.help-card ol {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0 0 14px;
-  padding-left: 18px;
-  color: var(--muted);
-  font-size: 0.76rem;
-  line-height: 1.5;
-}
-
-.help-card .btn {
-  width: 100%;
 }
 
 .content {
@@ -459,8 +412,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 22px;
   background:
-    radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.08), transparent 38%),
-    var(--panel);
+    radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.08), transparent 38%), var(--panel);
   box-shadow: 0 40px 120px rgba(0, 0, 0, 0.5);
 }
 
@@ -594,6 +546,10 @@
 
   .library__layout {
     grid-template-columns: 1fr;
+  }
+
+  .content {
+    order: -1;
   }
 
   .sidebar {
