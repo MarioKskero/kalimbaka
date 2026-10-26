@@ -67,6 +67,10 @@ function eventIsActive(event: TimelineEvent, timeMs: number, beatMs: number): bo
   return timeMs >= event.startMs - 120 && timeMs <= event.startMs + hold;
 }
 
+function targetRadiusFor(width: number): number {
+  return clamp(width * 0.27, 8, 19);
+}
+
 @Component({
   selector: 'app-falling-notes',
   template: `<canvas
@@ -480,6 +484,13 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     });
     const pxPerMs = scroll.pxPerBeat / beatMs;
     const activeLanes = new Set(this.manualLanes());
+    const targetProximities = this.computeTargetProximities(
+      timeline,
+      geometry,
+      timeMs,
+      pxPerMs,
+      noteHeight,
+    );
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
@@ -505,7 +516,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     ctx.fillRect(0, 0, width, height);
 
     this.drawKalimba(ctx, geometry, timeMs, activeLanes);
-    this.drawLanes(ctx, geometry, timeMs, activeLanes);
+    this.drawLanes(ctx, geometry, timeMs, activeLanes, targetProximities);
     this.drawNotes(ctx, geometry, timeline, timeMs, pxPerMs, beatMs, noteHeight, noteWidth);
     this.drawHitLine(ctx, geometry);
     this.drawHitEffects(ctx, geometry);
@@ -633,11 +644,56 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     ctx.fillText('CENTRAL', centerX, bottom - 2);
   }
 
+  private computeTargetProximities(
+    timeline: Timeline,
+    geometry: ReturnType<typeof computeGeometry>,
+    timeMs: number,
+    pxPerMs: number,
+    noteHeight: number,
+  ): Map<number, number> {
+    const proximities = new Map<number, number>();
+    if (pxPerMs <= 0) {
+      return proximities;
+    }
+
+    const maxRadius = geometry.lanes.reduce(
+      (maximum, lane) => Math.max(maximum, targetRadiusFor(lane.width)),
+      0,
+    );
+    const maxWindowMs = (maxRadius + noteHeight / 2) / pxPerMs;
+
+    for (const event of timeline.events) {
+      if (event.isRest || event.playableNotes.length === 0) {
+        continue;
+      }
+      const delta = event.startMs - timeMs;
+      if (delta > maxWindowMs || delta < -maxWindowMs * 0.35) {
+        continue;
+      }
+      for (const note of event.playableNotes) {
+        const lane = geometry.lanes[note.lane];
+        if (!lane) {
+          continue;
+        }
+        const reachMs = (targetRadiusFor(lane.width) + noteHeight / 2) / pxPerMs;
+        const proximity = delta >= 0 ? 1 - delta / reachMs : 1 + delta / (reachMs * 0.35);
+        if (proximity <= 0) {
+          continue;
+        }
+        const current = proximities.get(note.lane) ?? 0;
+        proximities.set(note.lane, Math.max(current, Math.min(1, proximity)));
+      }
+    }
+
+    return proximities;
+  }
+
   private drawLanes(
     ctx: CanvasRenderingContext2D,
     geometry: ReturnType<typeof computeGeometry>,
     timeMs: number,
     activeLanes: Set<number>,
+    targetProximities: ReadonlyMap<number, number>,
   ): void {
     const tineHeight = Math.max(0, geometry.hitLineY - geometry.tineTopY);
 
@@ -648,6 +704,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       }
       const color = this.colorFor(tine);
       const active = activeLanes.has(lane.laneIndex);
+      const target = targetProximities.get(lane.laneIndex) ?? 0;
       const pulse = active ? 0.5 + 0.5 * Math.sin(timeMs / 90) : 0;
       const tineWidth = Math.max(5, lane.width * 0.34);
 
@@ -691,13 +748,31 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
         ctx.fillText(tine.id, lane.x, geometry.tineTopY + 14);
       }
 
-      const targetRadius = clamp(lane.width * 0.27, 8, 19);
+      const targetRadius = targetRadiusFor(lane.width);
+      if (target > 0) {
+        const haloRadius = targetRadius * 2.2;
+        const halo = ctx.createRadialGradient(
+          lane.x,
+          geometry.hitLineY,
+          targetRadius * 0.5,
+          lane.x,
+          geometry.hitLineY,
+          haloRadius,
+        );
+        halo.addColorStop(0, this.alpha(color, 0.22 * target));
+        halo.addColorStop(1, this.alpha(color, 0));
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(lane.x, geometry.hitLineY, haloRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.beginPath();
       ctx.arc(lane.x, geometry.hitLineY, targetRadius, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(3, 6, 13, 0.72)';
       ctx.fill();
-      ctx.lineWidth = active ? 2.5 : 1.5;
-      ctx.strokeStyle = this.alpha(color, active ? 1 : 0.55);
+      ctx.lineWidth = active ? 2.5 : 1.5 + target * 1.5;
+      ctx.strokeStyle = this.alpha(color, active ? 1 : 0.55 + target * 0.45);
       ctx.stroke();
 
       if (tine.side === 'center') {
@@ -705,6 +780,14 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
         ctx.arc(lane.x, geometry.hitLineY, targetRadius + 3.5, 0, Math.PI * 2);
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+        ctx.stroke();
+      }
+
+      if (target > 0) {
+        ctx.beginPath();
+        ctx.arc(lane.x, geometry.hitLineY, targetRadius + 1.5 + (1 - target) * 3, 0, Math.PI * 2);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = `rgba(248, 250, 252, ${0.18 + target * 0.62})`;
         ctx.stroke();
       }
 

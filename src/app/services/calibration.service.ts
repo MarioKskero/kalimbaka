@@ -6,17 +6,8 @@ import {
   KalimbaSize,
 } from '../../core/kalimba';
 
-type CalibrationMap = Record<KalimbaSize, Calibration>;
-
 const STORAGE_KEY = 'kalimbapp.calibration.v1';
-
-function defaults(): CalibrationMap {
-  return {
-    8: { ...DEFAULT_CALIBRATION },
-    17: { ...DEFAULT_CALIBRATION },
-    21: { ...DEFAULT_CALIBRATION },
-  };
-}
+const LEGACY_SIZES: readonly KalimbaSize[] = [17, 8, 21];
 
 function readCalibration(value: unknown): Calibration {
   if (!value || typeof value !== 'object') {
@@ -30,63 +21,56 @@ function readCalibration(value: unknown): Calibration {
   });
 }
 
-function load(): CalibrationMap {
+function isCustomized(calibration: Calibration): boolean {
+  return (
+    Math.abs(calibration.scale - DEFAULT_CALIBRATION.scale) > 1e-6 ||
+    Math.abs(calibration.offsetX) > 1e-6 ||
+    Math.abs(calibration.offsetY) > 1e-6
+  );
+}
+
+function readStored(value: unknown): Calibration {
+  if (!value || typeof value !== 'object') {
+    return { ...DEFAULT_CALIBRATION };
+  }
+  const record = value as Record<string, unknown>;
+  if ('scale' in record || 'offsetX' in record || 'offsetY' in record) {
+    return readCalibration(record);
+  }
+
+  const legacy = LEGACY_SIZES.map((size) => readCalibration(record[String(size)]));
+  return legacy.find(isCustomized) ?? legacy[0] ?? { ...DEFAULT_CALIBRATION };
+}
+
+function load(): Calibration {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return defaults();
+      return { ...DEFAULT_CALIBRATION };
     }
-    const parsed = JSON.parse(raw) as Partial<Record<KalimbaSize, unknown>>;
-    return {
-      8: readCalibration(parsed[8]),
-      17: readCalibration(parsed[17]),
-      21: readCalibration(parsed[21]),
-    };
+    return readStored(JSON.parse(raw));
   } catch {
-    return defaults();
+    return { ...DEFAULT_CALIBRATION };
   }
 }
 
 @Injectable({ providedIn: 'root' })
 export class CalibrationService {
-  private readonly state = signal<CalibrationMap>(load());
+  private readonly state = signal<Calibration>(load());
 
-  readonly calibrations = this.state.asReadonly();
+  readonly calibration = this.state.asReadonly();
 
-  get(size: KalimbaSize): Calibration {
-    return this.state()[size];
-  }
-
-  set(size: KalimbaSize, calibration: Calibration): void {
-    const next: CalibrationMap = {
-      ...this.state(),
-      [size]: clampCalibration(calibration),
-    };
+  set(calibration: Calibration): void {
+    const next = clampCalibration(calibration);
     this.state.set(next);
     this.persist(next);
   }
 
-  nudgeScale(size: KalimbaSize, delta: number): void {
-    const current = this.get(size);
-    this.set(size, { ...current, scale: current.scale + delta });
+  reset(): void {
+    this.set({ ...DEFAULT_CALIBRATION });
   }
 
-  reset(size: KalimbaSize): void {
-    const next: CalibrationMap = {
-      ...this.state(),
-      [size]: { ...DEFAULT_CALIBRATION },
-    };
-    this.state.set(next);
-    this.persist(next);
-  }
-
-  resetAll(): void {
-    const next = defaults();
-    this.state.set(next);
-    this.persist(next);
-  }
-
-  private persist(value: CalibrationMap): void {
+  private persist(value: Calibration): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     } catch {

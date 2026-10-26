@@ -9,7 +9,7 @@ Este documento resume la arquitectura, las reglas de negocio y las trampas conoc
 - Reproductor en canvas + WebAudio.
 - Importación de tabs de texto y MIDI (`@tonejs/midi`).
 - Tests con Vitest vía `ng test`.
-- Actualmente: **103 tests pasando** y `npm run build` correcto.
+- Actualmente: **107 tests pasando** y `npm run build` correcto.
 - El proyecto está dentro de un repositorio git. No hagas commits salvo que se pida explícitamente.
 - La base `/kalimbaka/` se aplica en `deploy.sh` con `--base-href`; la configuración de producción no fija `baseHref`.
 
@@ -249,9 +249,10 @@ Orden:
 - **Atrás**: durante la partida abre el menú de pausa; si no, vuelve a la biblioteca.
 - **−10/+10 s**: barra superior, modal y flechas; usa tiempo musical sin count-in.
 - **Reanudar**: cuenta atrás opcional 0–4; por defecto 0.
+- **Tempo rápido**: el botón de tempo de la cabecera de juego sustituye al de colores, muestra el porcentaje respecto al BPM base (`bpm / baseBpm`) y abre un diálogo con slider 30–240 y multiplicadores 0,25×/0,5×/0,75×/1×/1,25×. Se calculan sobre el BPM base (`song.midi?.bpm ?? song.bpm`), no sobre el BPM actual. Si se abre durante la reproducción, pausa antes.
 - **HUD inferior**: “Ahora” se vacía durante silencios; “Siguiente” salta rests y muestra la próxima nota real.
-- Durante la reproducción la cabecera desaparece para dejar ver la caída de notas; un botón circular flotante con chevron en la parte superior la muestra de nuevo y vuelve a ocultarse a los ~3,2 s. El HUD (Ahora, progreso y Siguiente) vive abajo, siempre visible y semitransparente.
-- La línea de golpe del reproductor está al 2/3 de la altura (un tercio desde abajo), con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido. Los carriles y teclas solo se iluminan con pulsaciones manuales (touch o teclado), no con notas automáticas; la línea de golpe es fija y sin brillo.
+- Durante la reproducción la cabecera desaparece para dejar ver la caída de notas; un botón circular flotante con chevron en la parte superior la muestra de nuevo y vuelve a ocultarse a los ~3,2 s. Durante la cuenta atrás inicial permanece visible y se pliega al terminar. El HUD (Ahora, progreso y Siguiente) vive abajo, siempre visible y semitransparente.
+- La línea de golpe del reproductor está al 2/3 de la altura (un tercio desde abajo), con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido. Los carriles y teclas solo se iluminan con pulsaciones manuales (touch o teclado), no con notas automáticas; la línea de golpe es fija y sin brillo. El círculo destino se ilumina automáticamente cuando la nota entra en él, como guía de timing.
 - Aciertos manuales: `judge.ts` compara la pulsación con la nota del carril (perfecto ±60 ms, bien ±130 ms). Solo se juzga la primera pulsación de cada `evento:carril`; el playback automático no genera efectos. `FallingNotesComponent.triggerHitEffect` dibuja un burst local y la etiqueta de precisión.
 - El tamaño de nota es fijo (según el ancho/carril). `computeNoteScroll` mantiene la separación vertical mínima según la rejilla y reduce los pulsos visibles si la altura no da para el tamaño configurado; no se comprime la zona de caída.
 - La canción se reinicia al cambiar tamaño, BPM o articulación. Las pausas de frase son fijas: una línea en blanco = 1 beat.
@@ -277,9 +278,10 @@ Claves:
 
 Calibración:
 
-- por tamaño de kalimba;
+- global para todas las canciones y tamaños (no por tamaño de kalimba);
 - ancho inicial del 90% (`scale: 0.9`), `−/+` escala, arrastre para offset, reset;
 - offsets normalizados;
+- migra el formato antiguo por tamaño conservando la calibración personalizada;
 - no hay cámara/AR.
 
 ## 13. Visor y exportación
@@ -372,6 +374,7 @@ La UI/canvas no tiene tests automatizados. Para cambios visuales, prueba manualm
 - No invertir la escala de BPM MIDI.
 - No añadir líneas en blanco accidentales a tabs generados.
 - No contar notas de acordes eliminados como “omitidas” en los avisos de pérdida.
+- La calibración es global; no volver a indexarla por tamaño de kalimba.
 - No intentar conservar cromatismos exactos en una kalimba C major: es imposible sin retunear.
 - `Song.tabText` vacío es normal en MIDI; bifurca por `song.midi` y `song.midiSource`.
 - Un MIDI sin configurar tiene `midiSource` pero no `midi`; el reproductor debe abrir la configuración y no mostrar “tab sin notas”.

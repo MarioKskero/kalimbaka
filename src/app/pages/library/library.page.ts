@@ -65,9 +65,7 @@ export class LibraryPage {
   readonly status = signal<StatusMessage | null>(null);
 
   readonly layout = computed(() => getLayout(this.settings().kalimbaSize));
-  readonly currentCalibration = computed(
-    () => this.calibrationService.calibrations()[this.settings().kalimbaSize],
-  );
+  readonly currentCalibration = this.calibrationService.calibration;
   readonly filteredSongs = computed(() => {
     const query = this.query().trim().toLowerCase();
     const songs = this.songs();
@@ -225,9 +223,9 @@ export class LibraryPage {
   }
 
   saveCalibration(calibration: Calibration): void {
-    this.calibrationService.set(this.settings().kalimbaSize, calibration);
+    this.calibrationService.set(calibration);
     this.showCalibration.set(false);
-    this.notify('ok', 'Calibración guardada para esta kalimba.');
+    this.notify('ok', 'Calibración general guardada.');
   }
 
   closeCalibration(): void {

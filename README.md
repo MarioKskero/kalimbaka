@@ -305,18 +305,18 @@ La app informa de cada caso.
 - **Atrás**: durante la partida abre la modal de pausa/opciones.
 - **−10 s / +10 s**: barra superior y modal de pausa; también flechas izquierda/derecha.
 - **Sonido de notas**: toggle de altavoz. Las notas se sintetizan con WebAudio.
-- **Modo colores**: icono de paleta en la cabecera (o botón **Colores** en pausa). Pausa la guía y permite tocar una tina de la kalimba inferior para abrir una paleta táctil con muestras grandes, controles HSL personalizados y elegir el color individual de esa tecla. Puedes repetir el mismo color en varias.
+- **Modo colores**: botón **Colores** en pausa. Pausa la guía y permite tocar una tina de la kalimba inferior para abrir una paleta táctil con muestras grandes, controles HSL personalizados y elegir el color individual de esa tecla. Puedes repetir el mismo color en varias.
 - **Tocar con teclado**: activa la entrada de teclado y muestra la tecla asignada sobre cada carril.
 - **Configurar teclado**: permite reasignar cada nota y restaurar el mapa por defecto. El mapa se comparte entre los tamaños de kalimba.
 - **Metrónomo**: opcional, independiente del sonido de notas.
 - **Loop**: repite la canción.
-- **BPM**: 30–240.
+- **BPM**: 30–240. El botón de tempo de la cabecera de juego muestra el porcentaje respecto al BPM base y abre un diálogo con el slider y atajos de **0,25× / 0,5× / 0,75× / 1× / 1,25×** calculados sobre ese BPM base.
 - **Articulación**: 0–40%.
 - **Máx. notas visibles**: 3–12 pulsos; en pantallas bajas se muestran menos para que las notas no se solapen.
 - **Cuenta atrás al reanudar**: 0–4 pulsos.
 - **HUD inferior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
-- **Cabecera oculta y HUD inferior**: durante la reproducción la cabecera desaparece para dejar ver la caída de notas y un botón circular flotante en la parte superior permite mostrarla de nuevo durante unos segundos. El tiempo, “Ahora” y “Siguiente” se muestran siempre abajo, con fondo semitransparente.
-- **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez. Los carriles y teclas solo se iluminan con la pulsación manual (touch o teclado), no con la reproducción automática; la línea de golpe es fija.
+- **Cabecera oculta y HUD inferior**: durante la reproducción la cabecera desaparece para dejar ver la caída de notas y un botón circular flotante en la parte superior permite mostrarla de nuevo durante unos segundos. Permanece visible durante la cuenta atrás inicial y se pliega al terminar. El tiempo, “Ahora” y “Siguiente” se muestran siempre abajo, con fondo semitransparente.
+- **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez. Los carriles y teclas solo se iluminan con la pulsación manual (touch o teclado), no con la reproducción automática; la línea de golpe es fija. El círculo destino de cada carril se ilumina automáticamente cuando la nota entra en él, como guía de timing.
 - **Aciertos tipo Guitar Hero**: si tocas la tecla correcta en el momento de la nota aparece un burst de luz y partículas. Perfecto (±60 ms) muestra **PERFECTO** en dorado; bien (±130 ms) muestra **BIEN** en cian. Solo cuenta la primera pulsación manual de cada nota; no hay puntuación ni combo.
 - **Wake Lock**: intenta mantener la pantalla encendida.
 
@@ -334,7 +334,7 @@ Atajos:
 - Ancho inicial del **90%**; botones **− / +** para escalarlo.
 - Arrastrar para recolocar la guía.
 - Botón **Centrar** para resetear al ancho y posición por defecto.
-- Se guarda por tamaño de kalimba.
+- Es un ajuste **global**: se comparte entre todas las canciones y tamaños de kalimba.
 - No hay modo cámara/AR.
 
 La idea es alinear los carriles virtuales con las teclas físicas cuando el móvil está en un soporte delante de la kalimba.
@@ -365,7 +365,7 @@ Claves de `localStorage`:
 
 - `kalimbapp.songs.v1`: canciones importadas (texto y MIDI, incluida la fuente MIDI si existe).
 - `kalimbapp.settings.v1`: tamaño, BPM por defecto, articulación, colores por nota/tecla, metrónomo, sonido, loop, teclado, notas visibles y cuenta atrás al reanudar.
-- `kalimbapp.calibration.v1`: calibración por tamaño.
+- `kalimbapp.calibration.v1`: calibración global (ancho y offsets), común para todas las canciones y tamaños.
 - `kalimbapp.keyboard.v1`: mapa de teclado manual.
 - `kalimbapp.builtin-midi.v2`: configuración elegida para las demos MIDI.
 
@@ -423,7 +423,7 @@ La suite cubre:
 - reducción y eliminación de acordes;
 - exportación aproximada a tab.
 
-Estado actual: **103 tests pasando** y build limpio.
+Estado actual: **107 tests pasando** y build limpio.
 
 No hay lint script ni runner E2E configurado. Prettier está instalado; puedes usar `npx prettier --write .` si lo necesitas.
 

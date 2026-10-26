@@ -126,26 +126,13 @@
               }
             </button>
             <button
-              class="icon-btn"
+              class="seek-btn"
               type="button"
-              [class.icon-btn--active]="colorEdit()"
-              [attr.aria-pressed]="colorEdit()"
-              aria-label="Editar colores de notas"
-              title="Editar colores"
-              (click)="toggleColorEdit()"
+              [attr.aria-label]="'Cambiar tempo (' + bpmPercent() + '% · ' + bpm() + ' BPM)'"
+              [title]="'Cambiar tempo (' + bpmPercent() + '% · ' + bpm() + ' BPM)'"
+              (click)="openBpmDialog()"
             >
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path
-                  d="M12 3a9 9 0 1 0 0 18h1.2a1.8 1.8 0 0 0 0-3.6h-.5a2.4 2.4 0 0 1 0-4.8H16a5 5 0 0 0 0-10h-4Z"
-                  stroke="currentColor"
-                  stroke-width="1.7"
-                  stroke-linejoin="round"
-                />
-                <circle cx="7.5" cy="9" r="1.1" fill="currentColor" />
-                <circle cx="10" cy="6.2" r="1.1" fill="currentColor" />
-                <circle cx="14" cy="6.2" r="1.1" fill="currentColor" />
-                <circle cx="16.8" cy="9" r="1.1" fill="currentColor" />
-              </svg>
+              {{ bpmPercent() }}%
             </button>
             @if (fullscreen.supported && !fullscreen.isActive()) {
               <button
@@ -554,8 +541,8 @@
 
                   <p class="settings__hint">
                     Cambiar el tamaño, el tempo o la pausa reinicia la canción. Activa el sonido de
-                    notas para escuchar la melodía y graduar el tempo. La calibración se guarda por
-                    cada tamaño de kalimba.
+                    notas para escuchar la melodía y graduar el tempo. La calibración es común para
+                    todas las canciones y tamaños.
                   </p>
                 </div>
               }
@@ -727,6 +714,78 @@
                 </p>
               </div>
             }
+          </section>
+        </div>
+      }
+
+      @if (showBpmDialog()) {
+        <div class="player-overlay" (click)="closeBpmDialog()">
+          <section
+            class="player-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bpm-dialog-title"
+            (click)="$event.stopPropagation()"
+          >
+            <header class="player-modal__header">
+              <div>
+                <p class="eyebrow">Cambio rápido</p>
+                <h2 id="bpm-dialog-title">Tempo de la canción</h2>
+              </div>
+              <button class="icon-btn" type="button" aria-label="Cerrar" (click)="closeBpmDialog()">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="m6 6 12 12M18 6 6 18"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+            </header>
+
+            <div class="setting">
+              <div class="setting__row">
+                <span>Tempo</span>
+                <strong>{{ bpm() }} BPM</strong>
+              </div>
+              <input
+                class="range"
+                type="range"
+                min="30"
+                max="240"
+                step="1"
+                [value]="bpm()"
+                (input)="onBpmInput($event)"
+                aria-label="Tempo"
+              />
+            </div>
+
+            <div class="segmented segmented--compact">
+              @for (preset of bpmPresets(); track preset.multiplier) {
+                <button
+                  class="segmented__item"
+                  type="button"
+                  [class.segmented__item--active]="bpm() === preset.bpm"
+                  [attr.aria-pressed]="bpm() === preset.bpm"
+                  [attr.aria-label]="preset.label + ' (' + preset.bpm + ' BPM)'"
+                  [title]="preset.bpm + ' BPM'"
+                  (click)="applyBpmPreset(preset.multiplier)"
+                >
+                  {{ preset.label }}
+                </button>
+              }
+            </div>
+
+            <p class="settings__hint">
+              Atajos calculados sobre el tempo base de la canción: {{ baseBpm() }} BPM.
+            </p>
+
+            <div class="player-modal__actions">
+              <button class="btn btn--primary" type="button" (click)="closeBpmDialog()">
+                Listo
+              </button>
+            </div>
           </section>
         </div>
       }

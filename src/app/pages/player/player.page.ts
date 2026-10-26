@@ -52,6 +52,18 @@ import { SettingsService } from '../../services/settings.service';
 import { KeyboardMappingService } from '../../services/keyboard-mapping.service';
 import { SongLibraryService } from '../../services/song-library.service';
 
+const BPM_MIN = 30;
+const BPM_MAX = 240;
+const BPM_PRESET_MULTIPLIERS = [0.25, 0.5, 0.75, 1, 1.25] as const;
+
+function clampBpm(value: number): number {
+  return Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(value)));
+}
+
+function formatMultiplier(value: number): string {
+  return value === 1 ? '1×' : `${String(value).replace('.', ',')}×`;
+}
+
 @Component({
   selector: 'app-player-page',
   imports: [FallingNotesComponent, CalibrationViewComponent, MidiImportDialogComponent],
@@ -83,6 +95,20 @@ export class PlayerPage implements OnDestroy {
 
   readonly size = signal<KalimbaSize>(17);
   readonly bpm = signal(80);
+  readonly baseBpm = computed(() => {
+    const song = this.song();
+    const base = song?.midi?.bpm ?? song?.bpm ?? this.bpm();
+    return Number.isFinite(base) && base > 0 ? base : this.bpm();
+  });
+  readonly bpmPresets = computed(() => {
+    const base = this.baseBpm();
+    return BPM_PRESET_MULTIPLIERS.map((multiplier) => ({
+      multiplier,
+      label: formatMultiplier(multiplier),
+      bpm: clampBpm(base * multiplier),
+    }));
+  });
+  readonly bpmPercent = computed(() => Math.round((this.bpm() / this.baseBpm()) * 100));
   readonly noteGap = signal(0.15);
   readonly beatsVisible = signal(6);
   readonly loop = signal(false);
@@ -152,6 +178,7 @@ export class PlayerPage implements OnDestroy {
   readonly showSettings = signal(false);
   readonly showCalibration = signal(false);
   readonly showMidiConfig = signal(false);
+  readonly showBpmDialog = signal(false);
   readonly midiConfigFile = signal<File | null>(null);
   readonly midiConfigError = signal<string | null>(null);
   readonly tickState = signal<PlaybackTick | null>(null);
@@ -159,6 +186,8 @@ export class PlayerPage implements OnDestroy {
   readonly topControlsHidden = computed(
     () =>
       this.isPlaying() &&
+      this.tickState() !== null &&
+      !this.isCountingIn() &&
       !this.topControlsRevealed() &&
       !this.showPause() &&
       !this.showSettings() &&
@@ -203,7 +232,7 @@ export class PlayerPage implements OnDestroy {
       eventsPerBeat: this.parsed()?.metadata.eventsPerBeat ?? 1,
     });
   });
-  readonly currentCalibration = computed(() => this.calibrationService.calibrations()[this.size()]);
+  readonly currentCalibration = this.calibrationService.calibration;
   readonly recommended = computed(() => {
     const midi = this.midiData();
     if (midi) {
@@ -430,6 +459,11 @@ export class PlayerPage implements OnDestroy {
       this.captureMappingKey(event);
       return;
     }
+    if (event.code === 'Escape' && this.showBpmDialog()) {
+      event.preventDefault();
+      this.closeBpmDialog();
+      return;
+    }
     const target = event.target as HTMLElement | null;
     if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
       return;
@@ -511,16 +545,9 @@ export class PlayerPage implements OnDestroy {
     this.colorPickerTine.set(null);
     this.showPause.set(false);
     this.showSettings.set(false);
+    this.showBpmDialog.set(false);
     this.showCalibration.set(false);
     this.clearPressedLanes();
-  }
-
-  toggleColorEdit(): void {
-    if (this.colorEdit()) {
-      this.closeColorEdit();
-      return;
-    }
-    this.openColorEdit();
   }
 
   closeColorEdit(): void {
@@ -667,6 +694,7 @@ export class PlayerPage implements OnDestroy {
     await this.audio.resume();
     this.showPause.set(false);
     this.showSettings.set(false);
+    this.showBpmDialog.set(false);
     this.isPaused.set(false);
     this.isFinished.set(false);
     this.isPlaying.set(true);
@@ -702,6 +730,7 @@ export class PlayerPage implements OnDestroy {
     this.resetTopControls();
     this.showPause.set(false);
     this.showSettings.set(false);
+    this.showBpmDialog.set(false);
     this.isPaused.set(false);
     this.isPlaying.set(true);
     void this.audio.resume();
@@ -719,6 +748,7 @@ export class PlayerPage implements OnDestroy {
     this.resetTopControls();
     this.showPause.set(false);
     this.showSettings.set(false);
+    this.showBpmDialog.set(false);
     this.isPaused.set(false);
     this.isFinished.set(false);
     this.isPlaying.set(true);
@@ -756,6 +786,7 @@ export class PlayerPage implements OnDestroy {
   back(): void {
     this.exitColorEdit();
     this.cancelResumeCountdown();
+    this.showBpmDialog.set(false);
     this.playfield()?.stop();
     this.audio.stopAllNotes();
     this.isPlaying.set(false);
@@ -772,6 +803,7 @@ export class PlayerPage implements OnDestroy {
   openSettingsMenu(): void {
     this.exitColorEdit();
     this.cancelResumeCountdown();
+    this.showBpmDialog.set(false);
     if (this.isPlaying()) {
       this.pause(true);
     } else {
@@ -784,11 +816,13 @@ export class PlayerPage implements OnDestroy {
   closeSettings(): void {
     this.showKeyboardMapping.set(false);
     this.mappingCaptureTine.set(null);
+    this.showBpmDialog.set(false);
     this.showSettings.set(false);
   }
 
   openCalibration(): void {
     this.exitColorEdit();
+    this.showBpmDialog.set(false);
     this.showCalibration.set(true);
     this.showPause.set(false);
     this.showSettings.set(false);
@@ -808,6 +842,7 @@ export class PlayerPage implements OnDestroy {
     }
     this.midiConfigError.set(null);
     this.showPause.set(false);
+    this.showBpmDialog.set(false);
     this.openMidiConfigFor(song);
   }
 
@@ -832,6 +867,7 @@ export class PlayerPage implements OnDestroy {
   closeMidiConfig(): void {
     const song = this.song();
     this.showMidiConfig.set(false);
+    this.showBpmDialog.set(false);
     this.midiConfigFile.set(null);
     this.midiConfigError.set(null);
     if (song && !song.midi) {
@@ -842,7 +878,7 @@ export class PlayerPage implements OnDestroy {
   }
 
   saveCalibration(calibration: Calibration): void {
-    this.calibrationService.set(this.size(), calibration);
+    this.calibrationService.set(calibration);
     this.showCalibration.set(false);
     this.showPause.set(true);
   }
@@ -918,15 +954,30 @@ export class PlayerPage implements OnDestroy {
   }
 
   decreaseBpm(): void {
-    this.setBpm(Math.max(30, this.bpm() - 1));
+    this.setBpm(this.bpm() - 1);
   }
 
   increaseBpm(): void {
-    this.setBpm(Math.min(240, this.bpm() + 1));
+    this.setBpm(this.bpm() + 1);
+  }
+
+  openBpmDialog(): void {
+    if (this.isPlaying()) {
+      this.pause(true);
+    }
+    this.showBpmDialog.set(true);
+  }
+
+  closeBpmDialog(): void {
+    this.showBpmDialog.set(false);
+  }
+
+  applyBpmPreset(multiplier: number): void {
+    this.setBpm(this.baseBpm() * multiplier);
   }
 
   setBpm(value: number): void {
-    const bpm = Math.min(240, Math.max(30, Math.round(value)));
+    const bpm = clampBpm(value);
     if (bpm === this.bpm()) {
       return;
     }
