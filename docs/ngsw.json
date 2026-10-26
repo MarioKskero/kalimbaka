@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1793037871746,
+  "timestamp": 1793039514787,
   "index": "/kalimbaka/index.html",
   "assetGroups": [
     {
@@ -11,12 +11,12 @@
         "ignoreVary": true
       },
       "urls": [
-        "/kalimbaka/chunk-CAHTh00l.js",
-        "/kalimbaka/chunk-CfXBcnQq.js",
-        "/kalimbaka/chunk-CtwsXL_r.js",
+        "/kalimbaka/chunk-BanqrRuL.js",
+        "/kalimbaka/chunk-BsxsiO6O.js",
+        "/kalimbaka/chunk-MWaYHGj7.js",
         "/kalimbaka/favicon.ico",
         "/kalimbaka/index.html",
-        "/kalimbaka/main-NSCBTJTM.js",
+        "/kalimbaka/main-LZWWL2PP.js",
         "/kalimbaka/manifest.webmanifest",
         "/kalimbaka/styles-64OJK5UH.css"
       ],
@@ -90,9 +90,9 @@
   ],
   "dataGroups": [],
   "hashTable": {
-    "/kalimbaka/chunk-CAHTh00l.js": "77cc74b508c028781479b4240758de386fe845f4",
-    "/kalimbaka/chunk-CfXBcnQq.js": "2042496815067f45ef3fa90ec37d59d553eb2f8b",
-    "/kalimbaka/chunk-CtwsXL_r.js": "dfb58cfdeff0b46a020f557ce2bd3a006ba7fc97",
+    "/kalimbaka/chunk-BanqrRuL.js": "921667a0d81479e7b2c1a7bcba4448bc644d9a80",
+    "/kalimbaka/chunk-BsxsiO6O.js": "aa64405ba8daddb6f54603fe29d605055547d901",
+    "/kalimbaka/chunk-MWaYHGj7.js": "bfac3e72981bc17632c85f2eea74bfd7afe431db",
     "/kalimbaka/favicon-32x32.png": "cae0adbcc92c2c87f2aea850a7a70b68d020fe9a",
     "/kalimbaka/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
     "/kalimbaka/icons/icon-128x128.png": "86bc14fb7f394ecbb9219e40124bdde56105a67e",
@@ -104,8 +104,8 @@
     "/kalimbaka/icons/icon-512x512.png": "f42aa064b34898a2c9d7586f800b2d0de6e5dfdc",
     "/kalimbaka/icons/icon-72x72.png": "06a88bbd5c4aa11f53ca6926be28643d76bc2c73",
     "/kalimbaka/icons/icon-96x96.png": "403909ff6970ededb8fa2eaf516e9bc8c3bfe5ab",
-    "/kalimbaka/index.html": "bb6375d46d4ccc32e96a1d7cdb4cdf5026b05a98",
-    "/kalimbaka/main-NSCBTJTM.js": "0a6be12a84481f62e8e6eaa3d1b7747f1aff316f",
+    "/kalimbaka/index.html": "6ae29cf88646ed14ef79bd2161f11788d7ed1a34",
+    "/kalimbaka/main-LZWWL2PP.js": "5e86e6e2f8c8ecfbea73cd8e71e16bd48bce051b",
     "/kalimbaka/manifest.webmanifest": "a475ea654e69f1cda52eaa117127d193303bd99f",
     "/kalimbaka/songs/12_variations_of_twinkle_twinkle_little_star.mxl": "f9a0645301322133848a43face75aecd186960c8",
     "/kalimbaka/songs/index.json": "74fdd2d20e5dba8aa726d7d91cfa94bee54c9697",
