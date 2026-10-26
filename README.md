@@ -207,7 +207,7 @@ Las demos integradas están en `public/songs/` y se listan en `public/songs/inde
   "artist": "Autor",
   "bpm": 84,
   "kalimba": 17,
-  "file": "mi-cancion.txt"
+  "file": "mi_cancion.txt"
 }
 ```
 
@@ -220,7 +220,7 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
   "id": "mi-cancion-midi",
   "title": "Mi canción (MIDI)",
   "artist": "Autor",
-  "midi": "mi-cancion.mid"
+  "midi": "mi_cancion.mid"
 }
 ```
 
@@ -236,7 +236,7 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
   "id": "mi-partitura",
   "title": "Mi partitura",
   "artist": "Compositor",
-  "musicxml": "mi-partitura.mxl"
+  "musicxml": "mi_partitura.mxl"
 }
 ```
 
@@ -252,6 +252,8 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
 1. Copia el `.txt`, `.mid`, `.musicxml`, `.xml` o `.mxl` en `public/songs/`.
 2. Añade su entrada a `public/songs/index.json`.
 3. Recarga la app.
+
+Los nombres de archivo de las demos deben ser slugs ASCII en minúsculas, con letras, números y `_` (`aerosmith_dream_on.mid`, `monkey_island_theme.mid`). Incluye el grupo/artista real y el título, o solo el título cuando no haya un artista claro. Evita espacios, guiones, apóstrofes, acentos y signos como `?`, `(` o `¿`; los títulos y artistas visibles sí pueden conservarlos. No uses el `artist` del catálogo cuando sea solo el arreglista o subidor.
 
 ---
 

@@ -177,6 +177,14 @@ interface MidiReduction {
 - Las entradas MusicXML tampoco fijan pista ni configuración; la app genera una pista por pentagrama y, si hay varios, una fusión **Ambas manos**.
 - `loadBuiltIns` aísla errores por entrada: una demo inexistente o inválida se omite en silencio y no tumba el resto. Aun así, valida archivos e IDs.
 
+### Nombres de archivo
+
+- Usa slugs ASCII en minúsculas con letras, números y `_` (`aerosmith_dream_on.mid`).
+- Incluye el grupo/artista real y el título, o solo el título si no hay artista claro.
+- Evita espacios, guiones, apóstrofes, acentos y signos como `?`, `(`, `)` o `¿`.
+- Los `title` y `artist` visibles pueden conservar mayúsculas, acentos y puntuación.
+- No uses el `artist` del catálogo cuando sea solo el arreglista o subidor (p. ej. `Xitetin`, `Xitete el Grande`); usa el grupo/artista real o el título.
+
 ## 8. Formato de tabs de texto
 
 - Grados `1`–`7`; `8` = `1'`.
