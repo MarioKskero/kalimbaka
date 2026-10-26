@@ -16,6 +16,7 @@ import {
   Calibration,
   computeGeometry,
   computeNoteScroll,
+  HitRating,
   KalimbaLayout,
   NOTE_COLORS,
   PLAYFIELD_HIT_LINE_RATIO,
@@ -42,6 +43,20 @@ export interface BeatTick {
   isCountIn: boolean;
   accent: boolean;
 }
+
+interface HitSpark {
+  angle: number;
+  speed: number;
+}
+
+interface HitEffect {
+  lane: number;
+  rating: HitRating;
+  startedAt: number;
+  sparks: HitSpark[];
+}
+
+const HIT_EFFECT_MS = 520;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -117,6 +132,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   private lastBeatIndex = -1;
   private lastTimeMs = 0;
   private previousTimeMs = -1;
+  private readonly hitEffects: HitEffect[] = [];
 
   private readonly frame = (now: number) => this.onFrame(now);
 
@@ -161,6 +177,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
 
   play(fromMs = 0): void {
     this.clearPointers();
+    this.clearHitEffects();
     this.cancelFrame();
     this.offsetMs = clamp(fromMs, 0, this.timeline().totalMs);
     this.startPerf = performance.now();
@@ -190,6 +207,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   seekTo(ms: number): void {
     const timeline = this.timeline();
     const target = clamp(ms, 0, timeline.totalMs);
+    this.clearHitEffects();
     this.offsetMs = target;
     this.lastTimeMs = target;
     this.previousTimeMs = target;
@@ -204,6 +222,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
 
   pause(): void {
     this.clearPointers();
+    this.clearHitEffects();
     if (!this.running) {
       return;
     }
@@ -225,6 +244,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
 
   stop(): void {
     this.clearPointers();
+    this.clearHitEffects();
     this.running = false;
     this.cancelFrame();
     this.offsetMs = 0;
@@ -232,6 +252,25 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     this.previousTimeMs = -1;
     this.lastBeatIndex = -1;
     this.draw(0);
+  }
+
+  triggerHitEffect(lane: number, rating: HitRating): void {
+    if (lane < 0 || lane >= this.layout().tines.length) {
+      return;
+    }
+    const sparkCount = rating === 'perfect' ? 12 : 8;
+    const sparks = Array.from({ length: sparkCount }, () => ({
+      angle: Math.random() * Math.PI * 2,
+      speed: 0.7 + Math.random() * 0.8,
+    }));
+    this.hitEffects.push({ lane, rating, startedAt: performance.now(), sparks });
+    if (this.hitEffects.length > 24) {
+      this.hitEffects.splice(0, this.hitEffects.length - 24);
+    }
+  }
+
+  clearHitEffects(): void {
+    this.hitEffects.length = 0;
   }
 
   onPointerDown(event: PointerEvent): void {
@@ -314,6 +353,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
 
     if (elapsed >= timeline.totalMs) {
       if (this.loop() && timeline.events.length > 0) {
+        this.clearHitEffects();
         this.offsetMs = 0;
         this.startPerf = now;
         this.lastTimeMs = 0;
@@ -468,6 +508,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     this.drawLanes(ctx, geometry, timeMs, activeLanes);
     this.drawNotes(ctx, geometry, timeline, timeMs, pxPerMs, beatMs, noteHeight, noteWidth);
     this.drawHitLine(ctx, geometry);
+    this.drawHitEffects(ctx, geometry);
   }
 
   private drawKalimba(
@@ -818,6 +859,124 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     ctx.restore();
   }
 
+  private drawHitEffects(
+    ctx: CanvasRenderingContext2D,
+    geometry: ReturnType<typeof computeGeometry>,
+  ): void {
+    if (this.hitEffects.length === 0) {
+      return;
+    }
+
+    const now = performance.now();
+    let latest: HitEffect | null = null;
+
+    for (let index = this.hitEffects.length - 1; index >= 0; index -= 1) {
+      const effect = this.hitEffects[index];
+      const progress = (now - effect.startedAt) / HIT_EFFECT_MS;
+      if (progress >= 1) {
+        this.hitEffects.splice(index, 1);
+        continue;
+      }
+      latest ??= effect;
+      this.drawHitBurst(ctx, geometry, effect, progress);
+    }
+
+    if (latest !== null) {
+      this.drawHitLabel(ctx, geometry, latest, now);
+    }
+  }
+
+  private drawHitBurst(
+    ctx: CanvasRenderingContext2D,
+    geometry: ReturnType<typeof computeGeometry>,
+    effect: HitEffect,
+    progress: number,
+  ): void {
+    const lane = geometry.lanes[effect.lane];
+    const tine = this.layout().tines[effect.lane];
+    if (!lane || !tine) {
+      return;
+    }
+
+    const color = this.colorFor(tine);
+    const accent = effect.rating === 'perfect' ? '#fbbf24' : color;
+    const alpha = 1 - progress;
+    const ease = 1 - (1 - progress) ** 2;
+    const centerX = lane.x;
+    const centerY = geometry.hitLineY;
+    const flashRadius = lane.width * (0.7 + ease * 1.2);
+
+    const flash = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, flashRadius);
+    flash.addColorStop(0, this.alpha(accent, alpha * (effect.rating === 'perfect' ? 0.5 : 0.32)));
+    flash.addColorStop(1, this.alpha(accent, 0));
+    ctx.fillStyle = flash;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, flashRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    const ringRadius = lane.width * (0.25 + ease * 1.4);
+    ctx.save();
+    ctx.strokeStyle = this.alpha(accent, alpha * 0.85);
+    ctx.lineWidth = Math.max(1, (effect.rating === 'perfect' ? 3 : 2) * alpha);
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (effect.rating === 'perfect') {
+      ctx.strokeStyle = this.alpha(color, alpha * 0.5);
+      ctx.lineWidth = Math.max(1, 2 * alpha);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, ringRadius * 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = this.alpha(color, alpha * 0.9);
+    ctx.lineWidth = effect.rating === 'perfect' ? 2 : 1.5;
+    ctx.lineCap = 'round';
+    for (const spark of effect.sparks) {
+      const inner = lane.width * 0.2;
+      const outer = lane.width * (0.35 + ease * 1.7) * spark.speed;
+      const cos = Math.cos(spark.angle);
+      const sin = Math.sin(spark.angle);
+      ctx.beginPath();
+      ctx.moveTo(centerX + cos * inner, centerY + sin * inner);
+      ctx.lineTo(centerX + cos * outer, centerY + sin * outer);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  private drawHitLabel(
+    ctx: CanvasRenderingContext2D,
+    geometry: ReturnType<typeof computeGeometry>,
+    effect: HitEffect,
+    now: number,
+  ): void {
+    const progress = (now - effect.startedAt) / HIT_EFFECT_MS;
+    if (progress >= 1) {
+      return;
+    }
+    const perfect = effect.rating === 'perfect';
+    const color = perfect ? '#fbbf24' : '#a5f3fc';
+
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (1 - progress) * 1.8);
+    ctx.fillStyle = color;
+    ctx.font = `900 ${clamp(this.viewport.width * 0.032, 16, 30)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = this.alpha(color, 0.7);
+    ctx.shadowBlur = 16;
+    ctx.fillText(
+      perfect ? 'PERFECTO' : 'BIEN',
+      this.viewport.width / 2,
+      geometry.hitLineY - 34 - progress * 22,
+    );
+    ctx.restore();
+  }
+
   private roundedRect(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -879,6 +1038,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
 
   private cleanup(): void {
     this.clearPointers();
+    this.clearHitEffects();
     this.running = false;
     this.cancelFrame();
     this.observer?.disconnect();

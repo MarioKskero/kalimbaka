@@ -6,5 +6,6 @@ export * from './resolve';
 export * from './timeline';
 export * from './geometry';
 export * from './seek';
+export * from './judge';
 export * from './colors';
 export * from './keyboard';

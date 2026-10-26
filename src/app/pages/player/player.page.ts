@@ -23,6 +23,8 @@ import {
   buildTimeline,
   buildKeyboardBindings,
   computeSeekTarget,
+  findLaneHit,
+  hitNoteKey,
   isKeyboardCodeAllowed,
   keyboardLabel,
   NOTE_COLORS,
@@ -168,6 +170,8 @@ export class PlayerPage implements OnDestroy {
   private resumeTimer: ReturnType<typeof setInterval> | null = null;
   private colorSheetTimer: ReturnType<typeof setTimeout> | null = null;
   private topRevealTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly consumedHits = new Set<string>();
+  private lastTickTimeMs = 0;
 
   readonly midiData = computed(() => this.song()?.midi ?? null);
   readonly parsed = computed(() => {
@@ -491,6 +495,7 @@ export class PlayerPage implements OnDestroy {
       setTimeout(() => this.touchLanes.set([]), 250);
       return;
     }
+    this.registerManualHit(lane);
     void this.audio.resume().then(() => this.audio.playNotes([tine.midi], 900));
   }
 
@@ -666,6 +671,7 @@ export class PlayerPage implements OnDestroy {
     this.isFinished.set(false);
     this.isPlaying.set(true);
     this.tickState.set(null);
+    this.resetHitTracking();
     this.audio.stopAllNotes();
     this.playfield()?.play(0);
   }
@@ -717,6 +723,7 @@ export class PlayerPage implements OnDestroy {
     this.isFinished.set(false);
     this.isPlaying.set(true);
     this.tickState.set(null);
+    this.resetHitTracking();
     void this.audio.resume();
     this.audio.stopAllNotes();
     this.playfield()?.restart();
@@ -1001,6 +1008,7 @@ export class PlayerPage implements OnDestroy {
 
     this.audio.stopAllNotes();
     playfield.seekTo(seek.absoluteMs);
+    this.resetHitTracking();
 
     if (this.isFinished() && target < musicalTotal) {
       this.isFinished.set(false);
@@ -1039,6 +1047,11 @@ export class PlayerPage implements OnDestroy {
   }
 
   onTick(tick: PlaybackTick): void {
+    if (tick.timeMs < this.lastTickTimeMs) {
+      this.consumedHits.clear();
+      this.playfield()?.clearHitEffects();
+    }
+    this.lastTickTimeMs = tick.timeMs;
     this.tickState.set(tick);
   }
 
@@ -1101,8 +1114,38 @@ export class PlayerPage implements OnDestroy {
     return event ? event.labels.join(' + ') : '';
   }
 
+  private registerManualHit(lane: number): void {
+    if (!this.isPlaying()) {
+      return;
+    }
+    const timeline = this.timeline();
+    const playfield = this.playfield();
+    if (!timeline || !playfield) {
+      return;
+    }
+    const timeMs = playfield.currentTimeMs;
+    if (timeMs < this.lastTickTimeMs) {
+      this.consumedHits.clear();
+      playfield.clearHitEffects();
+      this.lastTickTimeMs = timeMs;
+    }
+    const hit = findLaneHit(timeline, lane, timeMs, this.consumedHits);
+    if (!hit) {
+      return;
+    }
+    this.consumedHits.add(hitNoteKey(hit.eventIndex, lane));
+    playfield.triggerHitEffect(lane, hit.rating);
+  }
+
+  private resetHitTracking(): void {
+    this.consumedHits.clear();
+    this.lastTickTimeMs = 0;
+    this.playfield()?.clearHitEffects();
+  }
+
   private resetPlayback(): void {
     this.cancelResumeCountdown();
+    this.resetHitTracking();
     this.playfield()?.stop();
     this.audio.stopAllNotes();
     this.isPlaying.set(false);
@@ -1137,6 +1180,7 @@ export class PlayerPage implements OnDestroy {
     this.pressedLanes.update((lanes) =>
       lanes.includes(binding.laneIndex) ? lanes : [...lanes, binding.laneIndex],
     );
+    this.registerManualHit(binding.laneIndex);
     void this.audio.resume().then(() => this.audio.playNotes([binding.midi], 900));
     return true;
   }

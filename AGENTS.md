@@ -9,7 +9,7 @@ Este documento resume la arquitectura, las reglas de negocio y las trampas conoc
 - Reproductor en canvas + WebAudio.
 - Importación de tabs de texto y MIDI (`@tonejs/midi`).
 - Tests con Vitest vía `ng test`.
-- Actualmente: **97 tests pasando** y `npm run build` correcto.
+- Actualmente: **103 tests pasando** y `npm run build` correcto.
 - El proyecto está dentro de un repositorio git. No hagas commits salvo que se pida explícitamente.
 - La base `/kalimbaka/` se aplica en `deploy.sh` con `--base-href`; la configuración de producción no fija `baseHref`.
 
@@ -252,6 +252,7 @@ Orden:
 - **HUD inferior**: “Ahora” se vacía durante silencios; “Siguiente” salta rests y muestra la próxima nota real.
 - Durante la reproducción la cabecera desaparece para dejar ver la caída de notas; un botón circular flotante con chevron en la parte superior la muestra de nuevo y vuelve a ocultarse a los ~3,2 s. El HUD (Ahora, progreso y Siguiente) vive abajo, siempre visible y semitransparente.
 - La línea de golpe del reproductor está al 2/3 de la altura (un tercio desde abajo), con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido. Los carriles y teclas solo se iluminan con pulsaciones manuales (touch o teclado), no con notas automáticas; la línea de golpe es fija y sin brillo.
+- Aciertos manuales: `judge.ts` compara la pulsación con la nota del carril (perfecto ±60 ms, bien ±130 ms). Solo se juzga la primera pulsación de cada `evento:carril`; el playback automático no genera efectos. `FallingNotesComponent.triggerHitEffect` dibuja un burst local y la etiqueta de precisión.
 - El tamaño de nota es fijo (según el ancho/carril). `computeNoteScroll` mantiene la separación vertical mínima según la rejilla y reduce los pulsos visibles si la altura no da para el tamaño configurado; no se comprime la zona de caída.
 - La canción se reinicia al cambiar tamaño, BPM o articulación. Las pausas de frase son fijas: una línea en blanco = 1 beat.
 - El loop de MIDI usa el ajuste de loop, no un `repeat` de canción.

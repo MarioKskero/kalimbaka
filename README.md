@@ -317,6 +317,7 @@ La app informa de cada caso.
 - **HUD inferior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
 - **Cabecera oculta y HUD inferior**: durante la reproducción la cabecera desaparece para dejar ver la caída de notas y un botón circular flotante en la parte superior permite mostrarla de nuevo durante unos segundos. El tiempo, “Ahora” y “Siguiente” se muestran siempre abajo, con fondo semitransparente.
 - **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez. Los carriles y teclas solo se iluminan con la pulsación manual (touch o teclado), no con la reproducción automática; la línea de golpe es fija.
+- **Aciertos tipo Guitar Hero**: si tocas la tecla correcta en el momento de la nota aparece un burst de luz y partículas. Perfecto (±60 ms) muestra **PERFECTO** en dorado; bien (±130 ms) muestra **BIEN** en cian. Solo cuenta la primera pulsación manual de cada nota; no hay puntuación ni combo.
 - **Wake Lock**: intenta mantener la pantalla encendida.
 
 Atajos:
@@ -422,7 +423,7 @@ La suite cubre:
 - reducción y eliminación de acordes;
 - exportación aproximada a tab.
 
-Estado actual: **97 tests pasando** y build limpio.
+Estado actual: **103 tests pasando** y build limpio.
 
 No hay lint script ni runner E2E configurado. Prettier está instalado; puedes usar `npx prettier --write .` si lo necesitas.
 
