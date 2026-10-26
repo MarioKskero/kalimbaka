@@ -15,10 +15,12 @@ import {
 import {
   Calibration,
   computeGeometry,
+  computeNoteScroll,
   KalimbaLayout,
   NOTE_COLORS,
   PLAYFIELD_HIT_LINE_RATIO,
   noteColor,
+  representativeEventGapBeats,
   Timeline,
   TimelineEvent,
   Tine,
@@ -428,9 +430,15 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       hitLineRatio: PLAYFIELD_HIT_LINE_RATIO,
     });
     const beatMs = timeline.beatMs;
-    const beatsVisible = clamp(this.beatsVisible(), 3, 12);
-    const pxPerBeat = (geometry.hitLineY - geometry.tineTopY) / beatsVisible;
-    const pxPerMs = pxPerBeat / beatMs;
+    const noteHeight = clamp(geometry.spacing * 0.5, 17, 44);
+    const noteWidth = clamp(geometry.spacing * 0.68, 18, 74);
+    const scroll = computeNoteScroll({
+      availableHeight: geometry.hitLineY - geometry.tineTopY,
+      beatsVisible: clamp(this.beatsVisible(), 3, 12),
+      noteHeight,
+      representativeGapBeats: representativeEventGapBeats(timeline),
+    });
+    const pxPerMs = scroll.pxPerBeat / beatMs;
     const activeEvents = timeline.events.filter((event) => eventIsActive(event, timeMs, beatMs));
     const activeLanes = new Set([
       ...activeEvents.flatMap((event) => event.lanes),
@@ -463,7 +471,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     this.drawKalimba(ctx, geometry, timeMs, activeLanes);
     this.drawHitLineGlow(ctx, geometry);
     this.drawLanes(ctx, geometry, timeMs, activeLanes);
-    this.drawNotes(ctx, geometry, timeline, timeMs, pxPerMs, beatMs);
+    this.drawNotes(ctx, geometry, timeline, timeMs, pxPerMs, beatMs, noteHeight, noteWidth);
     this.drawHitLine(ctx, geometry);
   }
 
@@ -695,6 +703,8 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     timeMs: number,
     pxPerMs: number,
     beatMs: number,
+    noteHeight: number,
+    noteWidth: number,
   ): void {
     const topLimit = geometry.tineTopY - 80;
     const bottomLimit = geometry.hitLineY + 30;
@@ -714,9 +724,6 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       if (pastFade <= 0) {
         continue;
       }
-
-      const noteHeight = clamp(geometry.spacing * 0.5, 17, 44);
-      const noteWidth = clamp(geometry.spacing * 0.68, 18, 74);
 
       if (event.isChord && event.playableNotes.length > 1) {
         const xs = event.playableNotes

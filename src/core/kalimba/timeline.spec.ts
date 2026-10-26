@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { computeGeometry, DEFAULT_CALIBRATION } from './geometry';
+import {
+  computeGeometry,
+  computeNoteScroll,
+  DEFAULT_CALIBRATION,
+  NOTE_SCROLL_GAP_PX,
+} from './geometry';
 import { getLayout } from './layouts';
 import { resolveTab, recommendedSize } from './resolve';
 import { parseTab } from './tab-parser';
-import { buildTimeline } from './timeline';
-import { Calibration } from './types';
+import { buildTimeline, representativeEventGapBeats } from './timeline';
+import { Calibration, Timeline } from './types';
 
-const SIMPLE_TAB = '1 2 3 5 2\'';
+const SIMPLE_TAB = "1 2 3 5 2'";
 
 describe('resolveTab', () => {
   it('marca las notas que no existen en 8 teclas', () => {
@@ -23,7 +28,7 @@ describe('resolveTab', () => {
 
   it('recomienda el tamaño mínimo que contiene todas las notas', () => {
     expect(recommendedSize(parseTab('1 2 3'))).toBe(8);
-    expect(recommendedSize(parseTab('1 2 3 3\''))).toBe(17);
+    expect(recommendedSize(parseTab("1 2 3 3'"))).toBe(17);
     expect(recommendedSize(parseTab('1 4,'))).toBe(21);
     expect(recommendedSize(parseTab(''))).toBeNull();
   });
@@ -184,8 +189,13 @@ describe('computeGeometry', () => {
     expect(geometry.lanes).toHaveLength(17);
     expect(geometry.lanes[8].x).toBeCloseTo(500);
     expect(geometry.lanes[8].width).toBeGreaterThan(0);
-    expect(geometry.hitLineY).toBeCloseTo(480);
+    expect(geometry.hitLineY).toBeCloseTo(400);
     expect(geometry.hitLineY).toBeGreaterThan(geometry.tineTopY);
+  });
+
+  it('aplica un ancho por defecto del 90 %', () => {
+    const geometry = computeGeometry(getLayout(17), viewport, DEFAULT_CALIBRATION);
+    expect(geometry.spacing).toBeCloseTo((1000 / 17) * 0.9);
   });
 
   it('permite bajar la línea de golpe para el reproductor', () => {
@@ -200,7 +210,7 @@ describe('computeGeometry', () => {
     const geometry = computeGeometry(getLayout(17), viewport, calibration);
     expect(geometry.lanes[8].x).toBeCloseTo(600);
     expect(geometry.spacing).toBeCloseTo((1000 / 17) * 0.5);
-    expect(geometry.hitLineY).toBeCloseTo(510);
+    expect(geometry.hitLineY).toBeCloseTo(430);
   });
 
   it('centra el 8 en su tecla central y no en el centro geométrico', () => {
@@ -208,5 +218,82 @@ describe('computeGeometry', () => {
     expect(geometry.lanes[4].x).toBeCloseTo(500);
     expect(geometry.lanes[0].x).toBeLessThan(500);
     expect(geometry.lanes[7].x).toBeGreaterThan(500);
+  });
+});
+
+describe('computeNoteScroll', () => {
+  it('mantiene los pulsos configurados cuando caben con el tamaño de nota fijo', () => {
+    const scroll = computeNoteScroll({
+      availableHeight: 600,
+      beatsVisible: 6,
+      noteHeight: 28,
+      representativeGapBeats: 1,
+    });
+
+    expect(scroll.pxPerBeat).toBeCloseTo(100);
+    expect(scroll.visibleBeats).toBeCloseTo(6);
+  });
+
+  it('reduce los pulsos visibles cuando la altura no da para el tamaño de nota', () => {
+    const scroll = computeNoteScroll({
+      availableHeight: 120,
+      beatsVisible: 6,
+      noteHeight: 28,
+      representativeGapBeats: 1,
+    });
+
+    expect(scroll.pxPerBeat).toBeCloseTo(31);
+    expect(scroll.visibleBeats).toBeLessThan(6);
+  });
+
+  it('deja un hueco entre notas consecutivas con rejilla densa', () => {
+    const noteHeight = 30;
+    const gapBeats = 0.25;
+    const scroll = computeNoteScroll({
+      availableHeight: 160,
+      beatsVisible: 6,
+      noteHeight,
+      representativeGapBeats: gapBeats,
+    });
+
+    expect(scroll.pxPerBeat * gapBeats).toBeGreaterThanOrEqual(noteHeight + NOTE_SCROLL_GAP_PX);
+    expect(scroll.visibleBeats).toBeLessThan(6);
+  });
+});
+
+describe('representativeEventGapBeats', () => {
+  it('usa la rejilla uniforme del tab', () => {
+    const resolved = resolveTab(parseTab('1 2 3 4 5 6 7 1'), getLayout(17));
+    const timeline = buildTimeline(resolved, {
+      bpm: 120,
+      countInBeats: 0,
+      eventsPerBeat: 4,
+    });
+
+    expect(representativeEventGapBeats(timeline)).toBeCloseTo(0.25);
+  });
+
+  it('ignora ornamentos aislados más rápidos que la rejilla', () => {
+    const resolved = resolveTab(parseTab('1 2 3 4 5 6 7 1 2 3'), getLayout(17));
+    const base = buildTimeline(resolved, {
+      bpm: 120,
+      countInBeats: 0,
+      eventsPerBeat: 1,
+    });
+    const timeline: Timeline = {
+      ...base,
+      events: base.events.map((event, index) =>
+        index === 5 ? { ...event, startMs: base.events[4].startMs + 10 } : event,
+      ),
+    };
+
+    expect(representativeEventGapBeats(timeline)).toBeCloseTo(1);
+  });
+
+  it('devuelve un pulso cuando no hay huecos', () => {
+    const resolved = resolveTab(parseTab('1'), getLayout(17));
+    const timeline = buildTimeline(resolved, { bpm: 120, countInBeats: 0 });
+
+    expect(representativeEventGapBeats(timeline)).toBe(1);
   });
 });

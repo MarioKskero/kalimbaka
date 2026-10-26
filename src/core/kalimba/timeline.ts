@@ -9,14 +9,36 @@ export interface TimelineOptions {
   eventsPerBeat?: number;
 }
 
+// Ignora hasta un 20 % de huecos excepcionalmente densos (ornamentos).
+const REPRESENTATIVE_GAP_PERCENTILE = 0.2;
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-export function buildTimeline(
-  resolved: ResolvedTab,
-  options: TimelineOptions,
-): Timeline {
+export function representativeEventGapBeats(timeline: Timeline): number {
+  if (timeline.beatMs <= 0) {
+    return 1;
+  }
+
+  const gaps: number[] = [];
+  for (let index = 1; index < timeline.events.length; index += 1) {
+    const delta = timeline.events[index].startMs - timeline.events[index - 1].startMs;
+    if (delta > 0) {
+      gaps.push(delta);
+    }
+  }
+
+  if (gaps.length === 0) {
+    return 1;
+  }
+
+  gaps.sort((a, b) => a - b);
+  const position = Math.floor((gaps.length - 1) * REPRESENTATIVE_GAP_PERCENTILE);
+  return gaps[position] / timeline.beatMs;
+}
+
+export function buildTimeline(resolved: ResolvedTab, options: TimelineOptions): Timeline {
   const bpm = clamp(Math.round(options.bpm), 30, 240);
   const beatMs = 60000 / bpm;
   const noteFill = 1 - clamp(options.noteGap ?? 0.15, 0, 0.8);
@@ -52,9 +74,7 @@ export function buildTimeline(
 
     const lanes = [...new Set(playableNotes.map((note) => note.lane))];
     const soundNotes = [
-      ...new Set(
-        event.notes.flatMap((note) => (note.tine ? [note.tine.midi] : [])),
-      ),
+      ...new Set(event.notes.flatMap((note) => (note.tine ? [note.tine.midi] : []))),
     ];
 
     return {

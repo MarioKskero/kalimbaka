@@ -312,10 +312,11 @@ La app informa de cada caso.
 - **Loop**: repite la canción.
 - **BPM**: 30–240.
 - **Articulación**: 0–40%.
-- **Notas visibles**: 3–12 pulsos.
+- **Máx. notas visibles**: 3–12 pulsos; en pantallas bajas se muestran menos para que las notas no se solapen.
 - **Cuenta atrás al reanudar**: 0–4 pulsos.
-- **HUD superior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
-- **Línea de golpe al 86%** de la altura: debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible (desde debajo de la cabecera hasta la tecla inferior) para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez.
+- **HUD inferior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
+- **Cabecera oculta y HUD inferior**: durante la reproducción la cabecera desaparece para dejar ver la caída de notas y un botón circular flotante en la parte superior permite mostrarla de nuevo durante unos segundos. El tiempo, “Ahora” y “Siguiente” se muestran siempre abajo, con fondo semitransparente.
+- **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez.
 - **Wake Lock**: intenta mantener la pantalla encendida.
 
 Atajos:
@@ -329,9 +330,9 @@ Atajos:
 
 ## Calibración
 
-- Botones **− / +** para escalar el ancho de los carriles.
+- Ancho inicial del **90%**; botones **− / +** para escalarlo.
 - Arrastrar para recolocar la guía.
-- Botón **Centrar** para resetear.
+- Botón **Centrar** para resetear al ancho y posición por defecto.
 - Se guarda por tamaño de kalimba.
 - No hay modo cámara/AR.
 
@@ -421,7 +422,7 @@ La suite cubre:
 - reducción y eliminación de acordes;
 - exportación aproximada a tab.
 
-Estado actual: **90 tests pasando** y build limpio.
+Estado actual: **97 tests pasando** y build limpio.
 
 No hay lint script ni runner E2E configurado. Prettier está instalado; puedes usar `npx prettier --write .` si lo necesitas.
 

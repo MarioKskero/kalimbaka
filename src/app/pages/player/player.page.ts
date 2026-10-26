@@ -153,9 +153,21 @@ export class PlayerPage implements OnDestroy {
   readonly midiConfigFile = signal<File | null>(null);
   readonly midiConfigError = signal<string | null>(null);
   readonly tickState = signal<PlaybackTick | null>(null);
+  readonly topControlsRevealed = signal(false);
+  readonly topControlsHidden = computed(
+    () =>
+      this.isPlaying() &&
+      !this.topControlsRevealed() &&
+      !this.showPause() &&
+      !this.showSettings() &&
+      !this.showCalibration() &&
+      !this.showMidiConfig() &&
+      !this.colorEdit(),
+  );
 
   private resumeTimer: ReturnType<typeof setInterval> | null = null;
   private colorSheetTimer: ReturnType<typeof setTimeout> | null = null;
+  private topRevealTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly midiData = computed(() => this.song()?.midi ?? null);
   readonly parsed = computed(() => {
@@ -393,6 +405,7 @@ export class PlayerPage implements OnDestroy {
       document.removeEventListener('visibilitychange', onVisibility);
       this.cancelResumeCountdown();
       this.cancelColorSheetTimer();
+      this.cancelTopRevealTimer();
       this.playfield()?.stop();
     });
   }
@@ -400,6 +413,7 @@ export class PlayerPage implements OnDestroy {
   ngOnDestroy(): void {
     this.cancelResumeCountdown();
     this.cancelColorSheetTimer();
+    this.cancelTopRevealTimer();
     this.playfield()?.stop();
   }
 
@@ -600,6 +614,18 @@ export class PlayerPage implements OnDestroy {
     }
   }
 
+  private resetTopControls(): void {
+    this.cancelTopRevealTimer();
+    this.topControlsRevealed.set(false);
+  }
+
+  private cancelTopRevealTimer(): void {
+    if (this.topRevealTimer !== null) {
+      clearTimeout(this.topRevealTimer);
+      this.topRevealTimer = null;
+    }
+  }
+
   private exitColorEdit(): void {
     this.colorEdit.set(false);
     this.cancelColorSheetTimer();
@@ -613,12 +639,25 @@ export class PlayerPage implements OnDestroy {
     this.clearPressedLanes();
   }
 
+  revealTopControls(): void {
+    if (!this.isPlaying()) {
+      return;
+    }
+    this.topControlsRevealed.set(true);
+    this.cancelTopRevealTimer();
+    this.topRevealTimer = setTimeout(() => {
+      this.topControlsRevealed.set(false);
+      this.topRevealTimer = null;
+    }, 3200);
+  }
+
   async start(): Promise<void> {
     if (!this.timeline()) {
       return;
     }
     this.exitColorEdit();
     this.cancelResumeCountdown();
+    this.resetTopControls();
     void this.fullscreen.enter();
     await this.audio.resume();
     this.showPause.set(false);
@@ -654,6 +693,7 @@ export class PlayerPage implements OnDestroy {
       return;
     }
     this.exitColorEdit();
+    this.resetTopControls();
     this.showPause.set(false);
     this.showSettings.set(false);
     this.isPaused.set(false);
@@ -670,6 +710,7 @@ export class PlayerPage implements OnDestroy {
   restart(): void {
     this.exitColorEdit();
     this.cancelResumeCountdown();
+    this.resetTopControls();
     this.showPause.set(false);
     this.showSettings.set(false);
     this.isPaused.set(false);

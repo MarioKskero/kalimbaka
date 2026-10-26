@@ -30,7 +30,13 @@
         (laneRelease)="onLaneRelease($event)"
       />
 
-      <header class="player-top">
+      <header
+        class="player-top"
+        [class.player-top--hidden]="topControlsHidden()"
+        [attr.inert]="topControlsHidden() ? '' : null"
+        (pointerdown)="revealTopControls()"
+        (focusin)="revealTopControls()"
+      >
         <div class="player-top__row">
           <div class="player-top__left">
             <button class="icon-btn" type="button" aria-label="Volver" (click)="requestBack()">
@@ -201,28 +207,6 @@
           </div>
         </div>
 
-        <div class="player-top__hud">
-          <div class="hud-card">
-            <span class="hud-label">Ahora</span>
-            <strong [class.hud-value--empty]="!currentLabel()">{{ currentLabel() }}</strong>
-          </div>
-
-          <div class="progress-area">
-            <div class="progress-bar">
-              <span [style.width.%]="progressPercent()"></span>
-            </div>
-            <div class="progress-time">
-              <span>{{ elapsedLabel() }}</span>
-              <span>{{ totalLabel() }}</span>
-            </div>
-          </div>
-
-          <div class="hud-card hud-card--right">
-            <span class="hud-label">Siguiente</span>
-            <strong [class.hud-value--empty]="!nextLabel()">{{ nextLabel() }}</strong>
-          </div>
-        </div>
-
         @if (unsupportedCount() > 0) {
           <div class="player-warning">
             <span>
@@ -248,6 +232,50 @@
           </div>
         }
       </header>
+
+      @if (topControlsHidden()) {
+        <button
+          class="icon-btn player-top-reveal"
+          type="button"
+          aria-label="Mostrar controles"
+          title="Mostrar controles"
+          (click)="revealTopControls()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="m6 9 6 6 6-6"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      }
+
+      @if (!colorEdit()) {
+        <div class="player-hud">
+          <div class="hud-card">
+            <span class="hud-label">Ahora</span>
+            <strong [class.hud-value--empty]="!currentLabel()">{{ currentLabel() }}</strong>
+          </div>
+
+          <div class="progress-area">
+            <div class="progress-bar">
+              <span [style.width.%]="progressPercent()"></span>
+            </div>
+            <div class="progress-time">
+              <span>{{ elapsedLabel() }}</span>
+              <span>{{ totalLabel() }}</span>
+            </div>
+          </div>
+
+          <div class="hud-card hud-card--right">
+            <span class="hud-label">Siguiente</span>
+            <strong [class.hud-value--empty]="!nextLabel()">{{ nextLabel() }}</strong>
+          </div>
+        </div>
+      }
 
       @if (isCountingIn()) {
         <div class="count-in" aria-live="polite">
@@ -432,7 +460,7 @@
 
                   <div class="setting">
                     <div class="setting__row">
-                      <span>Notas visibles</span>
+                      <span>Máx. notas visibles</span>
                       <strong>{{ beatsVisible() }} pulsos</strong>
                     </div>
                     <input
@@ -443,8 +471,11 @@
                       step="1"
                       [value]="beatsVisible()"
                       (input)="onBeatsInput($event)"
-                      aria-label="Notas visibles"
+                      aria-label="Máximo de notas visibles"
                     />
+                    <p class="settings__hint settings__hint--tight">
+                      En pantallas bajas se muestran menos para evitar solapes.
+                    </p>
                   </div>
 
                   <div class="setting">
@@ -620,6 +651,9 @@
                   <button class="btn btn--primary btn--xl" type="button" (click)="primaryAction()">
                     {{ primaryLabel() }}
                   </button>
+                  <button class="btn btn--danger" type="button" (click)="back()">
+                    Volver a la biblioteca
+                  </button>
                   @if (isPaused()) {
                     <button class="btn btn--soft" type="button" (click)="restart()">
                       Reiniciar
@@ -684,9 +718,6 @@
                   </button>
                   <button class="btn btn--ghost" type="button" (click)="openCalibration()">
                     Calibrar
-                  </button>
-                  <button class="btn btn--danger" type="button" (click)="back()">
-                    Volver a la biblioteca
                   </button>
                 </div>
 

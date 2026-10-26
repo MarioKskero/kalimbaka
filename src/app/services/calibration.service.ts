@@ -24,7 +24,7 @@ function readCalibration(value: unknown): Calibration {
   }
   const candidate = value as Partial<Calibration>;
   return clampCalibration({
-    scale: Number(candidate.scale ?? 1),
+    scale: Number(candidate.scale ?? DEFAULT_CALIBRATION.scale),
     offsetX: Number(candidate.offsetX ?? 0),
     offsetY: Number(candidate.offsetY ?? 0),
   });

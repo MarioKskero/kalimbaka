@@ -1,13 +1,28 @@
 import { Calibration, KalimbaLayout, LaneGeometry, PlayfieldGeometry, Viewport } from './types';
 
-export const PLAYFIELD_HIT_LINE_RATIO = 0.86;
+export const PLAYFIELD_HIT_LINE_RATIO = 2 / 3;
 
 export interface GeometryOptions {
   hitLineRatio?: number;
 }
 
+export interface NoteScrollOptions {
+  availableHeight: number;
+  beatsVisible: number;
+  noteHeight: number;
+  representativeGapBeats: number;
+  noteGapPx?: number;
+}
+
+export interface NoteScroll {
+  pxPerBeat: number;
+  visibleBeats: number;
+}
+
+export const NOTE_SCROLL_GAP_PX = 3;
+
 export const DEFAULT_CALIBRATION: Calibration = {
-  scale: 1,
+  scale: 0.9,
   offsetX: 0,
   offsetY: 0,
 };
@@ -17,6 +32,22 @@ export function clampCalibration(calibration: Calibration): Calibration {
     scale: Math.min(3, Math.max(0.3, calibration.scale)),
     offsetX: Math.min(1, Math.max(-1, calibration.offsetX)),
     offsetY: Math.min(1, Math.max(-1, calibration.offsetY)),
+  };
+}
+
+export function computeNoteScroll(options: NoteScrollOptions): NoteScroll {
+  const availableHeight = Math.max(1, options.availableHeight);
+  const beatsVisible = Math.max(1, options.beatsVisible);
+  const noteHeight = Math.max(1, options.noteHeight);
+  const gapBeats = Math.max(1 / 32, options.representativeGapBeats);
+  const gapPx = Math.max(0, options.noteGapPx ?? NOTE_SCROLL_GAP_PX);
+  const requestedPxPerBeat = availableHeight / beatsVisible;
+  const requiredPxPerBeat = (noteHeight + gapPx) / gapBeats;
+  const pxPerBeat = Math.max(requestedPxPerBeat, requiredPxPerBeat);
+
+  return {
+    pxPerBeat,
+    visibleBeats: availableHeight / pxPerBeat,
   };
 }
 
@@ -35,7 +66,10 @@ export function computeGeometry(
     0,
     layout.tines.findIndex((tine) => tine.side === 'center'),
   );
-  const hitLineRatio = Math.min(0.99, Math.max(0.5, options.hitLineRatio ?? 0.8));
+  const hitLineRatio = Math.min(
+    0.99,
+    Math.max(0.5, options.hitLineRatio ?? PLAYFIELD_HIT_LINE_RATIO),
+  );
   const hitLineY = viewport.height * hitLineRatio + safe.offsetY * viewport.height;
   const tineTopY = Math.max(10, viewport.height * 0.04);
 
