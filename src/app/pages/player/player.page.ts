@@ -718,6 +718,7 @@ export class PlayerPage implements OnDestroy {
     this.tickState.set(null);
     this.resetHitTracking();
     this.audio.stopAllNotes();
+    this.library.recordPlay(this.songId);
     this.playfield()?.play(0);
   }
 
@@ -788,6 +789,7 @@ export class PlayerPage implements OnDestroy {
     this.resetHitTracking();
     void this.audio.resume();
     this.audio.stopAllNotes();
+    this.library.recordPlay(this.songId);
     this.playfield()?.restart();
   }
 

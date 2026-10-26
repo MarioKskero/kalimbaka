@@ -187,6 +187,18 @@
       "title": "Kirby - Gourmet Race",
       "artist": "Kirby",
       "midi": "varios/kirby_gourmet_race.mid"
+    },
+    {
+      "id": "metallica-nothing-else-matters",
+      "title": "Metallica - Nothing Else Matters",
+      "artist": "Metallica",
+      "midi": "varios/metallica_nothing_else_matters.mid"
+    },
+    {
+      "id": "metallica-one",
+      "title": "Metallica - One",
+      "artist": "Metallica",
+      "midi": "varios/metallica_one.mid"
     }
   ]
 }

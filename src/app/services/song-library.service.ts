@@ -9,6 +9,7 @@ import { MusicXmlImportService } from './musicxml-import.service';
 
 const STORAGE_KEY = 'kalimbapp.songs.v1';
 const BUILTIN_CONFIGS_KEY = 'kalimbapp.builtin-midi.v2';
+const PLAYS_KEY = 'kalimbapp.plays.v1';
 
 interface BuiltInMidiConfig {
   bpm: number;
@@ -174,6 +175,24 @@ function titleFromFileName(name: string): string {
   return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
+function loadPlayCounts(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(PLAYS_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, value]) => typeof value === 'number' && value > 0),
+    );
+  } catch {
+    return {};
+  }
+}
+
 function loadImported(): Song[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -209,15 +228,23 @@ export class SongLibraryService {
   private readonly builtInState = signal<Song[]>([]);
   private readonly importedState = signal<Song[]>(loadImported());
   private readonly builtInConfigsState = signal<BuiltInMidiConfigs>(loadBuiltInMidiConfigs());
+  private readonly playCountsState = signal<Record<string, number>>(loadPlayCounts());
   private readonly readyState = signal(false);
   private readonly errorState = signal<string | null>(null);
 
-  readonly songs = computed<Song[]>(() => [
-    ...this.builtInState(),
-    ...this.importedState()
-      .slice()
-      .sort((a, b) => b.createdAt - a.createdAt),
-  ]);
+  readonly songs = computed<Song[]>(() => {
+    const counts = this.playCountsState();
+    return (
+      [
+        ...this.builtInState(),
+        ...this.importedState()
+          .slice()
+          .sort((a, b) => b.createdAt - a.createdAt),
+      ]
+        // Las más tocadas primero; las empatadas conservan su orden original.
+        .sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0))
+    );
+  });
   readonly imported = this.importedState.asReadonly();
   readonly ready = this.readyState.asReadonly();
   readonly error = this.errorState.asReadonly();
@@ -232,6 +259,18 @@ export class SongLibraryService {
 
   findSong(id: string): Song | undefined {
     return this.songs().find((song) => song.id === id);
+  }
+
+  /** Suma una reproducción a la canción indicada y reordena la biblioteca. */
+  recordPlay(id: string): void {
+    if (!id) {
+      return;
+    }
+    this.playCountsState.update((counts) => ({
+      ...counts,
+      [id]: (counts[id] ?? 0) + 1,
+    }));
+    this.persistPlays();
   }
 
   async importFiles(files: FileList | readonly File[]): Promise<ImportResult> {
@@ -410,7 +449,16 @@ export class SongLibraryService {
 
   removeSong(id: string): void {
     this.importedState.update((songs) => songs.filter((song) => song.id !== id));
+    this.playCountsState.update((counts) => {
+      if (!(id in counts)) {
+        return counts;
+      }
+      const next = { ...counts };
+      delete next[id];
+      return next;
+    });
     this.persist();
+    this.persistPlays();
   }
 
   clearImported(): void {
@@ -450,6 +498,14 @@ export class SongLibraryService {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.importedState()));
     } catch {
       // Sin persistencia si el navegador la bloquea o se llena.
+    }
+  }
+
+  private persistPlays(): void {
+    try {
+      localStorage.setItem(PLAYS_KEY, JSON.stringify(this.playCountsState()));
+    } catch {
+      // El contador se mantiene solo en la sesión si no hay persistencia.
     }
   }
 
