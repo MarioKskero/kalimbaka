@@ -821,13 +821,20 @@ export class PlayerPage implements OnDestroy {
     this.cancelRetime();
     this.pausedBeatPosition = null;
     this.showBpmDialog.set(false);
-    this.playfield()?.stop();
-    this.audio.stopAllNotes();
+    try {
+      this.playfield()?.stop();
+      this.audio.stopAllNotes();
+    } catch (error) {
+      // El teardown no debe impedir volver a la biblioteca.
+      console.error('Player: error al detener la reproducción', error);
+    }
     this.isPlaying.set(false);
     this.isPaused.set(false);
     this.isFinished.set(false);
     this.showPause.set(false);
-    void this.router.navigate(['/']);
+    void this.router.navigate(['/']).catch((error) => {
+      console.error('Player: error al volver a la biblioteca', error);
+    });
   }
 
   openSettings(): void {

@@ -57,30 +57,33 @@ interface HitEffect {
 }
 
 /**
- * Geometría y gradientes que solo cambian al redimensionar el canvas o al
- * editar los colores/layout. Se reconstruyen bajo demanda y se reutilizan en
- * cada frame para evitar decenas de asignaciones por fotograma.
+ * Posición de una tecla del instrumento. Se guarda para poder dibujar encima
+ * el resaltado de la tecla activa sin repetir el cálculo geométrico.
  */
 interface KeySlot {
   keyTop: number;
   keyLeft: number;
   width: number;
-  idle: CanvasGradient;
-  active: CanvasGradient;
 }
 
+/**
+ * Capas estáticas pre-renderizadas en un canvas offscreen. Todo lo que no
+ * cambia entre frames (fondo, instrumento, tinas, etiquetas, línea base) se
+ * dibuja una sola vez; cada frame solo se hace un `drawImage` de la superficie
+ * y se pintan encima las notas y los elementos dinámicos.
+ */
 interface StaticRenderCache {
   geometry: PlayfieldGeometry;
   width: number;
   height: number;
-  background: CanvasGradient;
-  stage: CanvasGradient;
-  body: CanvasGradient | null;
+  dpr: number;
+  showLabels: boolean;
+  keyLabels: readonly (string | null)[];
+  surface: HTMLCanvasElement;
   keyBottom: number;
   keySlots: KeySlot[];
-  laneMetal: CanvasGradient[];
-  laneGlow: CanvasGradient[];
-  targetHalo: CanvasGradient[];
+  // La línea de golpe se dibuja en el contexto principal porque va por encima
+  // de las notas (no se puede hornear por debajo de ellas).
   hitLine: CanvasGradient | null;
 }
 
@@ -179,10 +182,18 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   private laneColors: string[] = [];
   private laneContrast: string[] = [];
   private readonly rgbCache = new Map<string, readonly [number, number, number] | null>();
-  private lastFont = '';
+
+  // Canvas offscreen con las capas estáticas pre-renderizadas.
+  private staticCanvas: HTMLCanvasElement | null = null;
+
+  // La fuente aplicada se guarda por contexto: hay dos (principal y offscreen)
+  // y no deben compartir la caché, o se saltarían reasignaciones necesarias.
+  private readonly appliedFont = new WeakMap<CanvasRenderingContext2D, string>();
 
   private rafId = 0;
   private running = false;
+  // Se activa en cleanup() para no dibujar durante el desmontaje del componente.
+  private destroyed = false;
   private startPerf = 0;
   private offsetMs = 0;
   private lastTickAt = 0;
@@ -518,11 +529,24 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   }
 
   private draw(timeMs: number): void {
+    // Durante el desmontaje no se dibuja: evita trabajo inútil y cualquier
+    // excepción que pudiera abortar la navegación del router.
+    if (this.destroyed) {
+      return;
+    }
     const ctx = this.ctx;
     if (!ctx || this.viewport.width <= 0 || this.viewport.height <= 0) {
       return;
     }
+    try {
+      this.renderFrame(ctx, timeMs);
+    } catch (error) {
+      // Un error de dibujo no debe detener la reproducción ni la navegación.
+      console.error('FallingNotes: error de dibujo', error);
+    }
+  }
 
+  private renderFrame(ctx: CanvasRenderingContext2D, timeMs: number): void {
     const { width, height } = this.viewport;
     const timeline = this.timeline();
     // Geometría, paleta y gradientes se reutilizan entre frames; solo se
@@ -554,40 +578,43 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.globalAlpha = 1;
-    ctx.clearRect(0, 0, width, height);
 
-    ctx.fillStyle = cache.background;
-    ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = cache.stage;
-    ctx.fillRect(0, 0, width, height);
+    // Un único blit sustituye el fondo, el instrumento, las tinas y todas sus
+    // etiquetas (más de 200 operaciones de canvas por frame).
+    ctx.drawImage(cache.surface, 0, 0, width, height);
 
-    this.drawKalimba(ctx, geometry, activeLanes, cache);
-    this.drawLanes(ctx, geometry, timeMs, activeLanes, targetProximities, cache);
+    // Solo se repinta lo que cambia entre frames.
+    this.drawLaneOverlays(ctx, geometry, timeMs, activeLanes, targetProximities, cache);
     this.drawNotes(ctx, geometry, timeline, timeMs, pxPerMs, beatMs, noteHeight, noteWidth);
     this.drawHitLine(ctx, geometry, cache);
     this.drawHitEffects(ctx, geometry);
   }
 
-  private drawKalimba(
+  private renderStaticKalimba(
     ctx: CanvasRenderingContext2D,
     geometry: PlayfieldGeometry,
-    activeLanes: Set<number>,
-    cache: StaticRenderCache,
+    keyBottom: number,
+    keySlots: readonly KeySlot[],
   ): void {
     const first = geometry.lanes[0];
     const last = geometry.lanes[geometry.lanes.length - 1];
-    if (!first || !last || !cache.body) {
-      return;
-    }
     const top = geometry.hitLineY + 3;
     const bottom = this.viewport.height - 6;
+    if (!first || !last || bottom - top < 24) {
+      return;
+    }
     const left = Math.max(0, first.x - geometry.spacing * 0.5);
     const right = Math.min(this.viewport.width, last.x + geometry.spacing * 0.5);
-    const centerIndex = this.layout().tines.findIndex((tine) => tine.side === 'center');
+    const centerIndex = Math.max(
+      0,
+      this.layout().tines.findIndex((tine) => tine.side === 'center'),
+    );
     const centerX = geometry.lanes[centerIndex]?.x ?? (left + right) / 2;
-    const keyBottom = cache.keyBottom;
 
-    // El cuerpo de madera es estático: se rellena con el gradiente cacheado.
+    const body = ctx.createLinearGradient(0, top, 0, bottom);
+    body.addColorStop(0, 'rgba(86, 57, 36, 0.96)');
+    body.addColorStop(0.5, 'rgba(42, 27, 18, 0.98)');
+    body.addColorStop(1, 'rgba(15, 10, 8, 1)');
     ctx.beginPath();
     ctx.moveTo(left + 14, top + 7);
     ctx.quadraticCurveTo(centerX, top - 7, right - 14, top + 7);
@@ -596,7 +623,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     ctx.lineTo(left + 13, bottom);
     ctx.quadraticCurveTo(left, bottom, left, bottom - 13);
     ctx.closePath();
-    ctx.fillStyle = cache.body;
+    ctx.fillStyle = body;
     ctx.fill();
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.22)';
     ctx.lineWidth = 1;
@@ -604,7 +631,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
 
     geometry.lanes.forEach((lane, index) => {
       const tine = this.layout().tines[index];
-      const slot = cache.keySlots[index];
+      const slot = keySlots[index];
       if (!tine || !slot) {
         return;
       }
@@ -614,7 +641,6 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       }
       const isCenter = index === centerIndex;
       const color = this.laneColors[index] ?? noteColor(tine.degree);
-      const active = activeLanes.has(lane.laneIndex);
 
       if (keyTop > geometry.hitLineY + 5) {
         ctx.strokeStyle = this.alpha(isCenter ? '#fbbf24' : color, isCenter ? 0.45 : 0.16);
@@ -625,9 +651,8 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
         ctx.stroke();
       }
 
-      // Gradiente de la tecla cacheado (variantes reposo/activa). Ya no se
-      // crea un gradiente ni un `shadowBlur` por tina y por frame.
-      ctx.fillStyle = active ? slot.active : slot.idle;
+      // Gradiente de la tecla en reposo, creado una sola vez por reconstrucción.
+      ctx.fillStyle = this.createKeyGradient(ctx, slot.keyLeft, slot.width, color);
       this.roundedRect(
         ctx,
         slot.keyLeft,
@@ -638,10 +663,8 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       );
       ctx.fill();
 
-      ctx.strokeStyle = isCenter
-        ? 'rgba(251, 191, 36, 0.95)'
-        : this.alpha(color, active ? 0.95 : 0.52);
-      ctx.lineWidth = isCenter || active ? 2 : 1;
+      ctx.strokeStyle = isCenter ? 'rgba(251, 191, 36, 0.95)' : this.alpha(color, 0.52);
+      ctx.lineWidth = isCenter ? 2 : 1;
       ctx.beginPath();
       ctx.roundRect(
         slot.keyLeft,
@@ -729,18 +752,19 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     return proximities;
   }
 
-  private drawLanes(
-    ctx: CanvasRenderingContext2D,
-    geometry: PlayfieldGeometry,
-    timeMs: number,
-    activeLanes: Set<number>,
-    targetProximities: ReadonlyMap<number, number>,
-    cache: StaticRenderCache,
-  ): void {
+  /**
+   * Dibuja en la superficie offscreen las tinas metálicas, las etiquetas y los
+   * círculos de destino en estado base (sin proximidad ni pulsación). Todo
+   * esto es estático y deja de repetirse en cada frame.
+   */
+  private renderStaticLanes(ctx: CanvasRenderingContext2D, geometry: PlayfieldGeometry): void {
     const tineHeight = Math.max(0, geometry.hitLineY - geometry.tineTopY);
     const layout = this.layout();
     const showLabels = this.showLabels();
     const keyLabels = this.keyLabels();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
     geometry.lanes.forEach((lane, index) => {
       const tine = layout.tines[index];
@@ -748,19 +772,14 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
         return;
       }
       const color = this.laneColors[index] ?? noteColor(tine.degree);
-      const active = activeLanes.has(lane.laneIndex);
-      const target = targetProximities.get(lane.laneIndex) ?? 0;
-      const pulse = active ? 0.5 + 0.5 * Math.sin(timeMs / 90) : 0;
       const tineWidth = Math.max(5, lane.width * 0.34);
 
-      // Brillo de carril activo: gradiente cacheado por carril.
-      if (active) {
-        ctx.fillStyle = cache.laneGlow[index] ?? cache.laneGlow[0];
-        ctx.fillRect(lane.x - lane.width * 0.5, geometry.tineTopY, lane.width, tineHeight);
-      }
-
-      // Metal de la tina cacheado; sin `shadowBlur` (caro en GPUs móviles).
-      ctx.fillStyle = cache.laneMetal[index] ?? cache.laneMetal[0];
+      const metal = ctx.createLinearGradient(lane.x - tineWidth / 2, 0, lane.x + tineWidth / 2, 0);
+      metal.addColorStop(0, 'rgba(148, 163, 184, 0.08)');
+      metal.addColorStop(0.42, 'rgba(226, 232, 240, 0.32)');
+      metal.addColorStop(0.58, 'rgba(226, 232, 240, 0.22)');
+      metal.addColorStop(1, 'rgba(148, 163, 184, 0.08)');
+      ctx.fillStyle = metal;
       this.roundedRect(
         ctx,
         lane.x - tineWidth / 2,
@@ -780,24 +799,13 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       }
 
       const targetRadius = targetRadiusFor(lane.width);
-      if (target > 0) {
-        // El halo tiene color fijo y se modula con globalAlpha: así el
-        // gradiente radial se cachea en lugar de crearse cada frame.
-        const haloRadius = targetRadius * 2.2;
-        ctx.globalAlpha = target;
-        ctx.fillStyle = cache.targetHalo[index] ?? cache.targetHalo[0];
-        ctx.beginPath();
-        ctx.arc(lane.x, geometry.hitLineY, haloRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-
+      // Círculo de destino base: relleno oscuro + anillo tenue (proximidad 0).
       ctx.beginPath();
       ctx.arc(lane.x, geometry.hitLineY, targetRadius, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(3, 6, 13, 0.72)';
       ctx.fill();
-      ctx.lineWidth = active ? 2.5 : 1.5 + target * 1.5;
-      ctx.strokeStyle = this.alpha(color, active ? 1 : 0.55 + target * 0.45);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = this.alpha(color, 0.55);
       ctx.stroke();
 
       if (tine.side === 'center') {
@@ -807,6 +815,110 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
         ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
         ctx.stroke();
       }
+
+      if (showLabels) {
+        ctx.fillStyle = 'rgba(241, 245, 249, 0.72)';
+        this.setFont(ctx, `700 ${clamp(lane.width * 0.2, 9, 14)}px system-ui, sans-serif`);
+        ctx.fillText(tine.id, lane.x, geometry.hitLineY);
+      }
+
+      const keyLabel = keyLabels[index];
+      if (keyLabel) {
+        const keyY = geometry.hitLineY - targetRadius - 16;
+        ctx.fillStyle = 'rgba(165, 243, 252, 0.88)';
+        this.setFont(ctx, `800 ${clamp(lane.width * 0.2, 9, 12)}px system-ui, sans-serif`);
+        ctx.fillText(keyLabel, lane.x, keyY);
+      }
+    });
+  }
+
+  /**
+   * Capa dinámica de carriles: resaltado de teclas/carriles activos y anillos de
+   * proximidad. Solo recorre los carriles que realmente cambian (activos o con
+   * una nota acercándose), así que su coste es pequeño.
+   */
+  private drawLaneOverlays(
+    ctx: CanvasRenderingContext2D,
+    geometry: PlayfieldGeometry,
+    timeMs: number,
+    activeLanes: Set<number>,
+    targetProximities: ReadonlyMap<number, number>,
+    cache: StaticRenderCache,
+  ): void {
+    const tineHeight = Math.max(0, geometry.hitLineY - geometry.tineTopY);
+    const layout = this.layout();
+    const showLabels = this.showLabels();
+    const keyLabels = this.keyLabels();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    geometry.lanes.forEach((lane, index) => {
+      const tine = layout.tines[index];
+      if (!tine) {
+        return;
+      }
+      const active = activeLanes.has(lane.laneIndex);
+      const target = targetProximities.get(lane.laneIndex) ?? 0;
+      if (!active && target <= 0) {
+        return;
+      }
+      const color = this.laneColors[index] ?? noteColor(tine.degree);
+      const pulse = active ? 0.5 + 0.5 * Math.sin(timeMs / 90) : 0;
+      const targetRadius = targetRadiusFor(lane.width);
+
+      if (active) {
+        // Resaltado de la tecla (sustituye al antiguo gradiente activo): se
+        // pinta translúcido encima del estado en reposo ya horneado.
+        const slot = cache.keySlots[index];
+        const keyHeight = slot ? cache.keyBottom - slot.keyTop : 0;
+        if (slot && keyHeight >= 13) {
+          const radius = Math.min(10, slot.width / 2);
+          ctx.fillStyle = this.alpha(color, 0.26 + pulse * 0.16);
+          this.roundedRect(ctx, slot.keyLeft, slot.keyTop, slot.width, keyHeight, radius);
+          ctx.fill();
+          ctx.strokeStyle = this.alpha(color, 0.95);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(slot.keyLeft, slot.keyTop, slot.width, keyHeight, radius);
+          ctx.stroke();
+        }
+
+        // Brillo vertical del carril activo.
+        ctx.fillStyle = this.alpha(color, 0.13 + pulse * 0.05);
+        ctx.fillRect(lane.x - lane.width * 0.5, geometry.tineTopY, lane.width, tineHeight);
+
+        // El resaltado y el brillo tapan las etiquetas horneadas: se repintan.
+        if (showLabels) {
+          ctx.fillStyle = 'rgba(203, 213, 225, 0.62)';
+          this.setFont(ctx, `600 ${clamp(lane.width * 0.18, 9, 13)}px system-ui, sans-serif`);
+          ctx.fillText(tine.id, lane.x, geometry.tineTopY + 14);
+        }
+        if (slot && keyHeight >= 13) {
+          ctx.fillStyle = this.laneContrast[index] ?? '#05070f';
+          this.setFont(ctx, `800 ${clamp(slot.width * 0.36, 9, 15)}px system-ui, sans-serif`);
+          ctx.fillText(tine.id, lane.x, (slot.keyTop + cache.keyBottom) / 2);
+        }
+      }
+
+      if (target > 0) {
+        // Halo de proximidad: círculo translúcido modulado por `target`.
+        ctx.globalAlpha = target;
+        ctx.fillStyle = this.alpha(color, 0.2);
+        ctx.beginPath();
+        ctx.arc(lane.x, geometry.hitLineY, targetRadius * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // Círculo de destino con estilo activo/proximidad (tapa el base).
+      ctx.beginPath();
+      ctx.arc(lane.x, geometry.hitLineY, targetRadius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(3, 6, 13, 0.72)';
+      ctx.fill();
+      ctx.lineWidth = active ? 2.5 : 1.5 + target * 1.5;
+      ctx.strokeStyle = this.alpha(color, active ? 1 : 0.55 + target * 0.45);
+      ctx.stroke();
 
       if (target > 0) {
         ctx.beginPath();
@@ -824,12 +936,14 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
         ctx.stroke();
       }
 
+      // El círculo dinámico tapa la etiqueta del grado: se vuelve a pintar.
       if (showLabels) {
         ctx.fillStyle = 'rgba(241, 245, 249, 0.72)';
         this.setFont(ctx, `700 ${clamp(lane.width * 0.2, 9, 14)}px system-ui, sans-serif`);
         ctx.fillText(tine.id, lane.x, geometry.hitLineY);
       }
 
+      // El halo también tiñe la etiqueta de teclado; se repinta nítida.
       const keyLabel = keyLabels[index];
       if (keyLabel) {
         const keyY = geometry.hitLineY - targetRadius - 16;
@@ -1082,7 +1196,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     const color = perfect ? '#fbbf24' : '#a5f3fc';
 
     // La fuente se fija antes de `save()` para que `restore()` la deje igual
-    // y la caché `lastFont` siga siendo válida.
+    // y la caché de fuente del contexto siga siendo válida.
     this.setFont(ctx, `900 ${clamp(this.viewport.width * 0.032, 16, 30)}px system-ui, sans-serif`);
     ctx.save();
     ctx.globalAlpha = Math.min(1, (1 - progress) * 1.8);
@@ -1194,15 +1308,20 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     this.renderCache = null;
   }
 
-  /** Reutiliza la caché de gradientes si no ha cambiado geometría ni tamaño. */
+  /** Reutiliza la superficie offscreen si no han cambiado sus entradas. */
   private ensureRenderCache(ctx: CanvasRenderingContext2D): StaticRenderCache {
     const geometry = this.geometry();
+    const showLabels = this.showLabels();
+    const keyLabels = this.keyLabels();
     const existing = this.renderCache;
     if (
       existing &&
       existing.geometry === geometry &&
       existing.width === this.viewport.width &&
-      existing.height === this.viewport.height
+      existing.height === this.viewport.height &&
+      existing.dpr === this.dpr &&
+      existing.showLabels === showLabels &&
+      existing.keyLabels === keyLabels
     ) {
       return existing;
     }
@@ -1212,26 +1331,58 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Construye de una vez todos los gradientes estáticos. Antes se creaban
-   * decenas por fotograma; ahora solo al cambiar tamaño, geometría o colores.
+   * Pre-renderiza en un canvas offscreen todo lo estático: fondo, escenario,
+   * instrumento, tinas, etiquetas y destinos base. Solo se ejecuta al cambiar
+   * tamaño, geometría, DPR, etiquetas o colores. Además deja preparado el
+   * gradiente de la línea de golpe (que va sobre las notas).
    */
   private buildRenderCache(
     ctx: CanvasRenderingContext2D,
     geometry: PlayfieldGeometry,
   ): StaticRenderCache {
     const { width, height } = this.viewport;
+    const dpr = this.dpr;
     const layout = this.layout();
     const first = geometry.lanes[0];
     const last = geometry.lanes[geometry.lanes.length - 1];
     const top = geometry.hitLineY + 3;
     const bottom = height - 6;
+    const keyBottom = bottom - 12;
 
-    const background = ctx.createLinearGradient(0, 0, 0, height);
+    const surface = this.ensureStaticCanvas(width, height, dpr);
+    const off = surface.getContext('2d');
+
+    if (!off) {
+      // Caso muy improbable: sin contexto offscreen no se pre-renderiza nada.
+      return {
+        geometry,
+        width,
+        height,
+        dpr,
+        showLabels: this.showLabels(),
+        keyLabels: this.keyLabels(),
+        surface,
+        keyBottom,
+        keySlots: [],
+        hitLine: null,
+      };
+    }
+
+    // El canvas pudo cambiar de tamaño (reset de estado): invalida la fuente.
+    this.appliedFont.delete(off);
+    off.setTransform(dpr, 0, 0, dpr, 0, 0);
+    off.globalAlpha = 1;
+    off.clearRect(0, 0, width, height);
+
+    // Fondo + escenario horneados en la superficie.
+    const background = off.createLinearGradient(0, 0, 0, height);
     background.addColorStop(0, '#04060d');
     background.addColorStop(0.62, '#07101d');
     background.addColorStop(1, '#0a1424');
+    off.fillStyle = background;
+    off.fillRect(0, 0, width, height);
 
-    const stage = ctx.createRadialGradient(
+    const stage = off.createRadialGradient(
       width / 2,
       geometry.hitLineY,
       10,
@@ -1241,14 +1392,8 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     );
     stage.addColorStop(0, 'rgba(34, 211, 238, 0.09)');
     stage.addColorStop(1, 'rgba(34, 211, 238, 0)');
-
-    let body: CanvasGradient | null = null;
-    if (bottom - top >= 24 && first && last) {
-      body = ctx.createLinearGradient(0, top, 0, bottom);
-      body.addColorStop(0, 'rgba(86, 57, 36, 0.96)');
-      body.addColorStop(0.5, 'rgba(42, 27, 18, 0.98)');
-      body.addColorStop(1, 'rgba(15, 10, 8, 1)');
-    }
+    off.fillStyle = stage;
+    off.fillRect(0, 0, width, height);
 
     const centerIndex = Math.max(
       0,
@@ -1256,62 +1401,24 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     );
     const maxDistance = Math.max(1, centerIndex, layout.tines.length - 1 - centerIndex);
     const keyTopBase = top + 5;
-    const keyBottom = bottom - 12;
     const keyHeight = Math.max(0, keyBottom - keyTopBase);
     const maxOffset = Math.min(keyHeight * 0.34, 18);
 
+    // Solo se guardan las posiciones de las teclas; los gradientes ya quedan
+    // horneados en la superficie y no hacen falta por frame.
     const keySlots: KeySlot[] = geometry.lanes.map((lane, index) => {
       const distance = Math.abs(index - centerIndex);
       const keyTop = keyTopBase + Math.min(maxOffset, (distance / maxDistance) * maxOffset);
       const isCenter = index === centerIndex;
       const keyWidth = Math.max(16, lane.width * (isCenter ? 1.02 : 0.86));
-      const keyLeft = lane.x - keyWidth / 2;
-      const color = this.laneColors[index] ?? noteColor(layout.tines[index]?.degree ?? 1);
-      return {
-        keyTop,
-        keyLeft,
-        width: keyWidth,
-        idle: this.createKeyGradient(ctx, keyLeft, keyWidth, color, false),
-        active: this.createKeyGradient(ctx, keyLeft, keyWidth, color, true),
-      };
+      return { keyTop, keyLeft: lane.x - keyWidth / 2, width: keyWidth };
     });
 
-    const laneMetal = geometry.lanes.map((lane) => {
-      const tineWidth = Math.max(5, lane.width * 0.34);
-      const metal = ctx.createLinearGradient(lane.x - tineWidth / 2, 0, lane.x + tineWidth / 2, 0);
-      metal.addColorStop(0, 'rgba(148, 163, 184, 0.08)');
-      metal.addColorStop(0.42, 'rgba(226, 232, 240, 0.32)');
-      metal.addColorStop(0.58, 'rgba(226, 232, 240, 0.22)');
-      metal.addColorStop(1, 'rgba(148, 163, 184, 0.08)');
-      return metal;
-    });
+    this.renderStaticKalimba(off, geometry, keyBottom, keySlots);
+    this.renderStaticLanes(off, geometry);
 
-    const laneGlow = geometry.lanes.map((lane, index) => {
-      const color = this.laneColors[index] ?? noteColor(layout.tines[index]?.degree ?? 1);
-      const glow = ctx.createLinearGradient(0, geometry.tineTopY, 0, geometry.hitLineY);
-      glow.addColorStop(0, 'rgba(255,255,255,0)');
-      glow.addColorStop(0.55, this.alpha(color, 0.07));
-      glow.addColorStop(1, this.alpha(color, 0.17));
-      return glow;
-    });
-
-    // Halo con color fijo (alpha 0.22) que luego se modula con globalAlpha.
-    const targetHalo = geometry.lanes.map((lane, index) => {
-      const color = this.laneColors[index] ?? noteColor(layout.tines[index]?.degree ?? 1);
-      const targetRadius = targetRadiusFor(lane.width);
-      const halo = ctx.createRadialGradient(
-        lane.x,
-        geometry.hitLineY,
-        targetRadius * 0.5,
-        lane.x,
-        geometry.hitLineY,
-        targetRadius * 2.2,
-      );
-      halo.addColorStop(0, this.alpha(color, 0.22));
-      halo.addColorStop(1, this.alpha(color, 0));
-      return halo;
-    });
-
+    // La línea de golpe se pinta en el contexto principal (por encima de las
+    // notas); aquí solo se cachea su gradiente.
     let hitLine: CanvasGradient | null = null;
     if (first && last) {
       const margin = geometry.spacing;
@@ -1329,29 +1436,46 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       geometry,
       width,
       height,
-      background,
-      stage,
-      body,
+      dpr,
+      showLabels: this.showLabels(),
+      keyLabels: this.keyLabels(),
+      surface,
       keyBottom,
       keySlots,
-      laneMetal,
-      laneGlow,
-      targetHalo,
       hitLine,
     };
   }
 
+  /**
+   * Canvas offscreen reutilizado entre reconstrucciones. Solo se redimensiona
+   * cuando cambia el tamaño del viewport o el DPR.
+   */
+  private ensureStaticCanvas(width: number, height: number, dpr: number): HTMLCanvasElement {
+    let canvas = this.staticCanvas;
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      this.staticCanvas = canvas;
+    }
+    const pixelWidth = Math.max(1, Math.round(width * dpr));
+    const pixelHeight = Math.max(1, Math.round(height * dpr));
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
+    return canvas;
+  }
+
+  /** Gradiente horizontal de una tecla en reposo (se hornea en el offscreen). */
   private createKeyGradient(
     ctx: CanvasRenderingContext2D,
     keyLeft: number,
     keyWidth: number,
     color: string,
-    active: boolean,
   ): CanvasGradient {
     const metal = ctx.createLinearGradient(keyLeft, 0, keyLeft + keyWidth, 0);
     metal.addColorStop(0, 'rgba(148, 163, 184, 0.18)');
-    metal.addColorStop(0.38, this.alpha(color, active ? 0.94 : 0.58));
-    metal.addColorStop(0.64, this.alpha(color, active ? 0.64 : 0.34));
+    metal.addColorStop(0.38, this.alpha(color, 0.58));
+    metal.addColorStop(0.64, this.alpha(color, 0.34));
     metal.addColorStop(1, 'rgba(100, 116, 139, 0.14)');
     return metal;
   }
@@ -1387,11 +1511,14 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     return rgb ? `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})` : color;
   }
 
-  /** Evita reasignar la misma fuente a `ctx` repetidamente. */
+  /**
+   * Evita reasignar la misma fuente a `ctx` repetidamente. La caché es por
+   * contexto (principal vs offscreen) para no saltarse cambios necesarios.
+   */
   private setFont(ctx: CanvasRenderingContext2D, font: string): void {
-    if (this.lastFont !== font) {
+    if (this.appliedFont.get(ctx) !== font) {
       ctx.font = font;
-      this.lastFont = font;
+      this.appliedFont.set(ctx, font);
     }
   }
 
@@ -1406,8 +1533,11 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     this.dpr = Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
     canvas.width = Math.round(rect.width * this.dpr);
     canvas.height = Math.round(rect.height * this.dpr);
-    // Cambiar el tamaño del canvas reinicia el estado del contexto.
-    this.lastFont = '';
+    // Cambiar el tamaño del canvas reinicia el estado del contexto (fuente
+    // incluida), así que se invalida su caché y la superficie pre-renderizada.
+    if (this.ctx) {
+      this.appliedFont.delete(this.ctx);
+    }
     this.renderCache = null;
   }
 
@@ -1419,12 +1549,16 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   }
 
   private cleanup(): void {
+    this.destroyed = true;
     this.clearPointers();
     this.clearHitEffects();
     this.running = false;
     this.cancelFrame();
     this.observer?.disconnect();
     this.observer = null;
+    // Libera la superficie offscreen al destruir el componente.
+    this.staticCanvas = null;
+    this.renderCache = null;
   }
 
   private currentGeometry(): PlayfieldGeometry {
