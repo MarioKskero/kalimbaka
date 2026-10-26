@@ -439,11 +439,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       representativeGapBeats: representativeEventGapBeats(timeline),
     });
     const pxPerMs = scroll.pxPerBeat / beatMs;
-    const activeEvents = timeline.events.filter((event) => eventIsActive(event, timeMs, beatMs));
-    const activeLanes = new Set([
-      ...activeEvents.flatMap((event) => event.lanes),
-      ...this.manualLanes(),
-    ]);
+    const activeLanes = new Set(this.manualLanes());
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
@@ -469,7 +465,6 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     ctx.fillRect(0, 0, width, height);
 
     this.drawKalimba(ctx, geometry, timeMs, activeLanes);
-    this.drawHitLineGlow(ctx, geometry);
     this.drawLanes(ctx, geometry, timeMs, activeLanes);
     this.drawNotes(ctx, geometry, timeline, timeMs, pxPerMs, beatMs, noteHeight, noteWidth);
     this.drawHitLine(ctx, geometry);
@@ -794,18 +789,6 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private drawHitLineGlow(
-    ctx: CanvasRenderingContext2D,
-    geometry: ReturnType<typeof computeGeometry>,
-  ): void {
-    const band = ctx.createLinearGradient(0, geometry.hitLineY - 34, 0, geometry.hitLineY + 34);
-    band.addColorStop(0, 'rgba(34, 211, 238, 0)');
-    band.addColorStop(0.5, 'rgba(34, 211, 238, 0.08)');
-    band.addColorStop(1, 'rgba(34, 211, 238, 0)');
-    ctx.fillStyle = band;
-    ctx.fillRect(0, geometry.hitLineY - 34, this.viewport.width, 68);
-  }
-
   private drawHitLine(
     ctx: CanvasRenderingContext2D,
     geometry: ReturnType<typeof computeGeometry>,
@@ -821,15 +804,13 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     const line = ctx.createLinearGradient(left, 0, right, 0);
     line.addColorStop(0, 'rgba(34, 211, 238, 0)');
     line.addColorStop(0.12, 'rgba(34, 211, 238, 0.3)');
-    line.addColorStop(0.5, 'rgba(165, 243, 252, 0.9)');
+    line.addColorStop(0.5, 'rgba(165, 243, 252, 0.85)');
     line.addColorStop(0.88, 'rgba(34, 211, 238, 0.3)');
     line.addColorStop(1, 'rgba(34, 211, 238, 0)');
 
     ctx.save();
     ctx.strokeStyle = line;
     ctx.lineWidth = 2;
-    ctx.shadowColor = 'rgba(34, 211, 238, 0.8)';
-    ctx.shadowBlur = 14;
     ctx.beginPath();
     ctx.moveTo(left, geometry.hitLineY);
     ctx.lineTo(right, geometry.hitLineY);

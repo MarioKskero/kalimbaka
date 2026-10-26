@@ -251,7 +251,7 @@ Orden:
 - **Reanudar**: cuenta atrás opcional 0–4; por defecto 0.
 - **HUD inferior**: “Ahora” se vacía durante silencios; “Siguiente” salta rests y muestra la próxima nota real.
 - Durante la reproducción la cabecera desaparece para dejar ver la caída de notas; un botón circular flotante con chevron en la parte superior la muestra de nuevo y vuelve a ocultarse a los ~3,2 s. El HUD (Ahora, progreso y Siguiente) vive abajo, siempre visible y semitransparente.
-- La línea de golpe del reproductor está al 2/3 de la altura (un tercio desde abajo), con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido.
+- La línea de golpe del reproductor está al 2/3 de la altura (un tercio desde abajo), con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido. Los carriles y teclas solo se iluminan con pulsaciones manuales (touch o teclado), no con notas automáticas; la línea de golpe es fija y sin brillo.
 - El tamaño de nota es fijo (según el ancho/carril). `computeNoteScroll` mantiene la separación vertical mínima según la rejilla y reduce los pulsos visibles si la altura no da para el tamaño configurado; no se comprime la zona de caída.
 - La canción se reinicia al cambiar tamaño, BPM o articulación. Las pausas de frase son fijas: una línea en blanco = 1 beat.
 - El loop de MIDI usa el ajuste de loop, no un `repeat` de canción.

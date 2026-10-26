@@ -316,7 +316,7 @@ La app informa de cada caso.
 - **Cuenta atrás al reanudar**: 0–4 pulsos.
 - **HUD inferior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
 - **Cabecera oculta y HUD inferior**: durante la reproducción la cabecera desaparece para dejar ver la caída de notas y un botón circular flotante en la parte superior permite mostrarla de nuevo durante unos segundos. El tiempo, “Ahora” y “Siguiente” se muestran siempre abajo, con fondo semitransparente.
-- **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez.
+- **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez. Los carriles y teclas solo se iluminan con la pulsación manual (touch o teclado), no con la reproducción automática; la línea de golpe es fija.
 - **Wake Lock**: intenta mantener la pantalla encendida.
 
 Atajos:
