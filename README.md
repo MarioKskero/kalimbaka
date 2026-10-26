@@ -7,6 +7,7 @@ Guía visual tipo _Guitar Hero_ para tocar la kalimba con tabs numéricos. La ap
 - **Canvas** para el reproductor.
 - **WebAudio** para el sonido de notas y el metrónomo.
 - **@tonejs/midi** para importar MIDI.
+- **fflate** para descomprimir MusicXML `.mxl`.
 - Sin backend: todo se guarda en el navegador.
 
 ## Índice
@@ -17,16 +18,17 @@ Guía visual tipo _Guitar Hero_ para tocar la kalimba con tabs numéricos. La ap
 4. [Formato de tabs de texto](#formato-de-tabs-de-texto)
 5. [Catálogo de canciones](#catálogo-de-canciones)
 6. [MIDI](#midi)
-7. [Reducción MIDI sin pérdidas](#reducción-sin-pérdidas)
-8. [Reproductor](#reproductor)
-9. [Calibración](#calibración)
-10. [Visor de tab y exportación aproximada](#visor-de-tab-y-exportación-aproximada)
-11. [Persistencia](#persistencia)
-12. [Arquitectura](#arquitectura)
-13. [Desarrollo y tests](#desarrollo-y-tests)
-14. [Problemas frecuentes](#problemas-frecuentes)
-15. [Limitaciones actuales](#limitaciones-actuales)
-16. [Créditos y contenido](#créditos-y-contenido)
+7. [MusicXML](#musicxml)
+8. [Reducción MIDI sin pérdidas](#reducción-sin-pérdidas)
+9. [Reproductor](#reproductor)
+10. [Calibración](#calibración)
+11. [Visor de tab y exportación aproximada](#visor-de-tab-y-exportación-aproximada)
+12. [Persistencia](#persistencia)
+13. [Arquitectura](#arquitectura)
+14. [Desarrollo y tests](#desarrollo-y-tests)
+15. [Problemas frecuentes](#problemas-frecuentes)
+16. [Limitaciones actuales](#limitaciones-actuales)
+17. [Créditos y contenido](#créditos-y-contenido)
 
 ---
 
@@ -78,7 +80,7 @@ En `npm start` el service worker está desactivado y la instalación no aparece.
 
 > Los tests usan el builder `@angular/build:unit-test` con Vitest. No uses `npm test -- --run`; el flag correcto es `--watch=false`.
 
-Al cambiar archivos de `public/songs`, `public/songs/index.json` o los propios MIDI, haz una **recarga completa** de la página. El catálogo se carga al iniciar la app y las peticiones llevan cache-busting (`?v=timestamp` + `cache: no-store`).
+Al cambiar archivos de `public/songs`, `public/songs/index.json` o los propios MIDI/MusicXML, haz una **recarga completa** de la página. El catálogo se carga al iniciar la app y las peticiones llevan cache-busting (`?v=timestamp` + `cache: no-store`).
 
 ---
 
@@ -94,13 +96,12 @@ Al cambiar archivos de `public/songs`, `public/songs/index.json` o los propios M
 En la biblioteca puedes:
 
 - cambiar el tamaño de kalimba;
-- ajustar BPM por defecto y articulación;
-- importar tabs de texto o MIDI con el botón **Importar**;
+- importar tabs de texto, MIDI o MusicXML con el botón **Importar**;
 - calibrar;
 - abrir la guía de uso;
 - ver el tab con el icono del ojo.
 
-El botón **Importar** acepta `.txt`/`.kalimba` como tab, `.json` como biblioteca y `.mid`/`.midi` como MIDI. También permite pegar un tab.
+El botón **Importar** acepta `.txt`/`.kalimba` como tab, `.json` como biblioteca, `.mid`/`.midi` como MIDI y `.musicxml`/`.xml`/`.mxl` como partitura. También permite pegar un tab.
 
 ---
 
@@ -228,11 +229,27 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
 - La configuración elegida se guarda por canción y se muestra en **“Listo para tocar”**, donde también se puede cambiar.
 - En las demos MIDI, `title` y `artist` del índice siguen teniendo prioridad.
 
-> Si una entrada del índice falla (archivo inexistente o MIDI corrupto), el `Promise.all` de carga de demos puede dejar sin cargar el resto. Revisa la consola y el aviso de la biblioteca.
+### Canción MusicXML
+
+```json
+{
+  "id": "mi-partitura",
+  "title": "Mi partitura",
+  "artist": "Compositor",
+  "musicxml": "mi-partitura.mxl"
+}
+```
+
+- `musicxml`: nombre del archivo dentro de `public/songs/`. También puedes usar `file` con extensión `.musicxml`, `.xml` o `.mxl`.
+- La entrada **no fija** pista, tamaño, BPM, transposición ni reducción. Al pulsar **Jugar**, el configurador muestra los pentagramas y, si hay varios, una opción **Ambas manos**.
+- La configuración elegida se guarda por demo, igual que en MIDI.
+- En las demos MusicXML, `title` y `artist` del índice tienen prioridad sobre los del archivo.
+
+> Si una entrada del índice no existe o falla, se omite sin mostrar error; el resto de demos se carga con normalidad.
 
 ### Añadir una canción
 
-1. Copia el `.txt` o `.mid` en `public/songs/`.
+1. Copia el `.txt`, `.mid`, `.musicxml`, `.xml` o `.mxl` en `public/songs/`.
 2. Añade su entrada a `public/songs/index.json`.
 3. Recarga la app.
 
@@ -268,7 +285,7 @@ El MIDI se guarda con su fuente original para poder reconfigurarlo y, una vez co
 - Se usa el tempo inicial del MIDI. Los cambios internos de tempo no se reflejan en el metrónomo.
 - La transposición se calcula con **Auto** al elegir la pista; puedes ajustarla a mano y volver a pedir la sugerencia.
 - Las notas que no caben se pueden plegar de octava, ajustar de semitono o quitar con la reducción.
-- Los JSON de biblioteca se pueden importar desde **Importar**; los MIDI incluyen la fuente original si existe.
+- Los JSON de biblioteca se pueden importar desde **Importar**; MIDI y MusicXML incluyen la fuente original si existe.
 
 ### Reducción sin pérdidas
 
@@ -295,9 +312,48 @@ La app informa de cada caso.
 
 ---
 
+## MusicXML
+
+### Importación manual
+
+1. Pulsa **Importar** y elige un `.musicxml`, `.xml` o `.mxl`.
+2. La canción se añade como **partitura pendiente de configurar**.
+3. Pulsa **Jugar**. Se abre el mismo configurador que en MIDI:
+   - pentagrama o **Ambas manos**;
+   - tamaño de kalimba;
+   - BPM de reproducción;
+   - transposición;
+   - reducción (octavas, cromatismos y quitar acordes).
+4. Revisa la vista previa y guarda la configuración.
+
+### Pentagramas y fusión
+
+- Cada pentagrama aparece como una pista independiente (“Piano · Pentagrama 1”, etc.).
+- Si la parte tiene varios pentagramas, aparece **Piano · Ambas manos**, que fusiona todas las notas y deduplica unísonos.
+- La **melodía probable** se calcula solo entre pentagramas individuales, nunca sobre la fusión.
+- La fusión es útil cuando la melodía cambia de mano o quieres conservar el acompañamiento. Con **Quitar acordes** se conserva la nota más aguda de cada grupo; sin esa opción pueden omitirse notas si no caben.
+
+### Comportamiento
+
+- Se acepta MusicXML **partwise**; `.mxl` se descomprime automáticamente.
+- Se leen `divisions`, tempo inicial, notas, acordes, silencios, `backup`/`forward` y ataduras básicas.
+- Se omiten notas de adorno y percusión no afinada.
+- Se recorta el silencio inicial de cada pentagrama; la fusión conserva la alineación entre manos.
+- Se usa el tempo inicial; los cambios internos de tempo se ignoran, igual que en MIDI.
+- La reducción y la transposición son las mismas que en MIDI.
+
+### Fuentes
+
+- **MuseScore** (millones de partituras; exporta MusicXML desde la app o descarga el archivo).
+- **OpenScore**, **CPDL** y **Musicalion**, con partituras en MusicXML o exportables.
+- Cualquier editor que exporte MusicXML: MuseScore, Sibelius, Finale, Dorico, etc.
+- No se importan PDF ni imágenes: requerirían OMR. Tampoco se leen directamente `.mscz` o `.gp*`; expórtalos a MusicXML.
+
+---
+
 ## Reproductor
 
-- **Tamaño de kalimba**: en tabs de texto se usa el elegido en la biblioteca. En MIDI configurado se usa el tamaño guardado con esa canción; se puede cambiar desde **Configurar MIDI** en “Listo para tocar”. Los avisos de notas que no caben siguen disponibles.
+- **Tamaño de kalimba**: en tabs de texto se usa el elegido en la biblioteca. En MIDI o MusicXML configurado se usa el tamaño guardado con esa canción; se puede cambiar desde **Configurar MIDI** / **Configurar partitura** en “Listo para tocar”. Los avisos de notas que no caben siguen disponibles.
 - **Pantalla completa / landscape**: se solicita en el primer gesto (los navegadores no permiten pedirla sin interacción). El botón de volver del reproductor lleva a la biblioteca **sin salir** de pantalla completa; el único control de la app para salir es el icono de pantalla completa de la biblioteca. También intenta bloquear la orientación; en portrait muestra “Gira el móvil”.
 - **Cuenta atrás**: 4 beats al empezar.
 - **Pausa**: el botón de pausa/play congela la pantalla sin abrir modal. Se cortan notas, metrónomo y cuentas atrás.
@@ -310,10 +366,10 @@ La app informa de cada caso.
 - **Configurar teclado**: permite reasignar cada nota y restaurar el mapa por defecto. El mapa se comparte entre los tamaños de kalimba.
 - **Metrónomo**: opcional, independiente del sonido de notas.
 - **Loop**: repite la canción.
-- **BPM**: 30–240. El botón de tempo de la cabecera de juego muestra el porcentaje respecto al BPM base y abre un diálogo con el slider y atajos de **0,25× / 0,5× / 0,75× / 1× / 1,25×** calculados sobre ese BPM base.
+- **BPM**: 30–240. El botón de tempo de la cabecera de juego muestra el porcentaje respecto al BPM base y abre un diálogo con el slider y atajos de **0,25× / 0,5× / 0,75× / 1× / 1,25×** calculados sobre ese BPM base. Cambiar el tempo conserva la posición actual y permite continuar desde el mismo punto.
 - **Articulación**: 0–40%.
 - **Máx. notas visibles**: 3–12 pulsos; en pantallas bajas se muestran menos para que las notas no se solapen.
-- **Cuenta atrás al reanudar**: 0–4 pulsos.
+- **Cuenta atrás al reanudar**: 0–4 pulsos. Al empezar, las notas esperan a que termine la cuenta atrás inicial y después comienzan a caer.
 - **HUD inferior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
 - **Cabecera oculta y HUD inferior**: durante la reproducción la cabecera desaparece para dejar ver la caída de notas y un botón circular flotante en la parte superior permite mostrarla de nuevo durante unos segundos. Permanece visible durante la cuenta atrás inicial y se pliega al terminar. El tiempo, “Ahora” y “Siguiente” se muestran siempre abajo, con fondo semitransparente.
 - **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez. Los carriles y teclas solo se iluminan con la pulsación manual (touch o teclado), no con la reproducción automática; la línea de golpe es fija. El círculo destino de cada carril se ilumina automáticamente cuando la nota entra en él, como guía de timing.
@@ -346,9 +402,9 @@ La idea es alinear los carriles virtuales con las teclas físicas cuando el móv
 El icono del ojo en cada tarjeta abre el visor:
 
 - **Tabs de texto**: muestra el contenido original y permite copiarlo.
-- **MIDI configurado**: muestra resumen y lista de notas; también las estadísticas de reducción.
-- **MIDI pendiente de configurar**: no tiene visor; pulsa Jugar para configurarlo.
-- **Exportar tab** (solo MIDI):
+- **MIDI o MusicXML configurado**: muestra resumen y lista de notas; también las estadísticas de reducción.
+- **Pista pendiente de configurar**: no tiene visor; pulsa Jugar para configurarla.
+- **Exportar tab** (MIDI y MusicXML):
   - rejilla `1/4`, `1/8` o `1/16`;
   - incluir silencios o no;
   - informe de pasos, acordes, notas omitidas y duración;
@@ -363,11 +419,11 @@ El icono del ojo en cada tarjeta abre el visor:
 
 Claves de `localStorage`:
 
-- `kalimbapp.songs.v1`: canciones importadas (texto y MIDI, incluida la fuente MIDI si existe).
+- `kalimbapp.songs.v1`: canciones importadas (texto, MIDI y MusicXML, incluida la fuente original si existe).
 - `kalimbapp.settings.v1`: tamaño, BPM por defecto, articulación, colores por nota/tecla, metrónomo, sonido, loop, teclado, notas visibles y cuenta atrás al reanudar.
 - `kalimbapp.calibration.v1`: calibración global (ancho y offsets), común para todas las canciones y tamaños.
 - `kalimbapp.keyboard.v1`: mapa de teclado manual.
-- `kalimbapp.builtin-midi.v2`: configuración elegida para las demos MIDI.
+- `kalimbapp.builtin-midi.v2`: configuración elegida para las demos MIDI y MusicXML.
 
 Las demos integradas se cargan desde `public/songs/` en cada arranque. Los tabs importados no se envían a ningún servidor.
 
@@ -380,14 +436,15 @@ src/
   core/
     kalimba/      dominio puro: tipos, layouts, notación, parser, timeline, geometría, seek
     midi/         dominio MIDI: tipos, mapeo/reducción, timeline, exportación a tab
+    musicxml/     parser MusicXML/MXL y fusión de pentagramas
   app/
     models/       Song y entradas de importación
-    services/     biblioteca, ajustes, calibración, audio, fullscreen, parser MIDI
+    services/     biblioteca, ajustes, calibración, audio, fullscreen, parsers MIDI/MusicXML
     components/   tarjetas, diálogos, canvas, calibración, visor
     pages/        biblioteca y reproductor
     app.*         shell y rutas
 public/
-  songs/          tabs y MIDI de demo + index.json
+  songs/          tabs, MIDI y MusicXML de demo + index.json
 ```
 
 Rutas:
@@ -402,6 +459,7 @@ Puntos clave:
 - El reproductor dibuja con `requestAnimationFrame` en canvas.
 - El catálogo se carga en `SongLibraryService` y usa `cache: no-store`.
 - `@tonejs/midi` está permitido como CommonJS en `angular.json`.
+- `fflate` solo se usa para descomprimir `.mxl`; es MIT y ligera.
 
 ---
 
@@ -421,9 +479,11 @@ La suite cubre:
 - importación MIDI y recorte de silencio inicial;
 - mapeo MIDI exacto/octava/cromatismo;
 - reducción y eliminación de acordes;
+- parseo MusicXML (notas, acordes, silencios, ataduras, pentagramas, metadatos y MXL);
+- fusión de pentagramas y deduplicación de unísonos;
 - exportación aproximada a tab.
 
-Estado actual: **107 tests pasando** y build limpio.
+Estado actual: **120 tests pasando** y build limpio.
 
 No hay lint script ni runner E2E configurado. Prettier está instalado; puedes usar `npx prettier --write .` si lo necesitas.
 
@@ -452,7 +512,7 @@ Haz recarga completa. El índice se lee al arrancar. Las peticiones llevan cache
 
 - que el archivo exista en `public/songs/`;
 - que el `id` sea único;
-- que el MIDI sea válido y tenga alguna pista melódica;
+- que el MIDI o MusicXML sea válido y tenga alguna pista melódica;
 - que el JSON sea válido.
 
 **El MIDI empieza tarde**
@@ -477,7 +537,7 @@ En una kalimba de Do mayor no existe. Activa el ajuste de cromatismos o elige ot
 
 **Quiero quitar los acordes**
 
-Abre **Configurar MIDI** desde **“Listo para tocar”** y activa **Quitar acordes**. Se conserva la nota más aguda de cada acorde.
+Abre **Configurar MIDI** o **Configurar partitura** desde **“Listo para tocar”** y activa **Quitar acordes**. Se conserva la nota más aguda de cada acorde.
 
 ---
 
@@ -491,9 +551,11 @@ Abre **Configurar MIDI** desde **“Listo para tocar”** y activa **Quitar acor
 - Los tabs de texto no tienen ritmo real: cada evento ocupa un paso de la rejilla (por defecto un pulso).
 - La pausa de frase es fija: una línea en blanco = un beat.
 - La exportación MIDI→tab es aproximada.
-- Los cambios de tempo internos del MIDI no se reflejan en el metrónomo.
-- La importación MIDI trabaja con una pista/canal, no mezcla varias.
+- Los cambios de tempo internos del MIDI o MusicXML no se reflejan en el metrónomo.
+- La importación MIDI trabaja con una pista/canal; MusicXML permite elegir pentagrama o fusionar las manos.
 - En un 17 en Do mayor, las notas cromáticas no se pueden conservar exactas.
+- MusicXML solo se acepta en formato partwise; no se importan PDF, imágenes, `.mscz` ni `.gp*` directamente.
+- Las notas de adorno y la percusión no afinada se omiten.
 
 ---
 
@@ -501,5 +563,7 @@ Abre **Configurar MIDI** desde **“Listo para tocar”** y activa **Quitar acor
 
 - Layouts basados en la disposición estándar de kalimba en Do mayor.
 - Formato de tabs inspirado en KalimbaTabs.net.
-- Los tabs y MIDI de demo son ejemplos de uso; los derechos de las canciones pertenecen a sus autores. Úsalos solo si tienes derecho a ello.
-- Angular, `@tonejs/midi`, Vitest y el resto de dependencias mantienen sus propias licencias.
+- Los tabs, MIDI y MusicXML de demo son ejemplos de uso; los derechos de las canciones pertenecen a sus autores. Úsalos solo si tienes derecho a ello.
+- Las **12 variaciones de Twinkle Twinkle Little Star** (Mozart) son de dominio público; el archivo MXL de demo procede de la biblioteca de MuseTrainer.
+- MusicXML es un estándar abierto; las partituras de ejemplo deben tener licencia compatible.
+- Angular, `@tonejs/midi`, `fflate`, Vitest y el resto de dependencias mantienen sus propias licencias.

@@ -37,6 +37,7 @@ import {
   DEFAULT_MIDI_REDUCTION,
   recommendedMidiSize,
 } from '../../../core/midi';
+import { isMusicXmlFileName } from '../../../core/musicxml';
 import {
   BeatTick,
   FallingNotesComponent,
@@ -111,6 +112,7 @@ export class PlayerPage implements OnDestroy {
   readonly bpmPercent = computed(() => Math.round((this.bpm() / this.baseBpm()) * 100));
   readonly noteGap = signal(0.15);
   readonly beatsVisible = signal(6);
+  private readonly leadInBeats = signal(6);
   readonly loop = signal(false);
   readonly metronome = signal(false);
   readonly noteSound = signal(false);
@@ -201,6 +203,8 @@ export class PlayerPage implements OnDestroy {
   private topRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly consumedHits = new Set<string>();
   private lastTickTimeMs = 0;
+  private pausedBeatPosition: number | null = null;
+  private retimeTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly midiData = computed(() => this.song()?.midi ?? null);
   readonly parsed = computed(() => {
@@ -218,6 +222,7 @@ export class PlayerPage implements OnDestroy {
       return buildMidiTimeline(midi, this.layout(), {
         bpm: this.bpm(),
         countInBeats: 4,
+        startDelayBeats: this.leadInBeats(),
         reduction: midi.reduction ?? DEFAULT_MIDI_REDUCTION,
       });
     }
@@ -229,6 +234,7 @@ export class PlayerPage implements OnDestroy {
       bpm: this.bpm(),
       noteGap: this.noteGap(),
       countInBeats: 4,
+      startDelayBeats: this.leadInBeats(),
       eventsPerBeat: this.parsed()?.metadata.eventsPerBeat ?? 1,
     });
   });
@@ -298,6 +304,11 @@ export class PlayerPage implements OnDestroy {
   readonly midiConfigTrackId = computed(() => this.song()?.midi?.trackId ?? null);
   readonly midiConfigTrackName = computed(() => this.song()?.midi?.trackName ?? null);
   readonly midiConfigChannel = computed(() => this.song()?.midi?.channel ?? null);
+  readonly isMusicXmlSong = computed(() => isMusicXmlFileName(this.song()?.midiFileName ?? ''));
+  readonly midiConfigLabel = computed(() =>
+    this.isMusicXmlSong() ? 'Configurar partitura' : 'Configurar MIDI',
+  );
+  readonly trackLabel = computed(() => (this.isMusicXmlSong() ? 'Pentagrama' : 'Pista'));
   readonly midiTranspositionLabel = computed(() => {
     const midi = this.song()?.midi;
     if (!midi) {
@@ -411,6 +422,7 @@ export class PlayerPage implements OnDestroy {
       this.size.set(song.midi ? song.kalimbaSize : settings.kalimbaSize);
       this.noteGap.set(settings.noteGap);
       this.beatsVisible.set(settings.beatsVisible);
+      this.leadInBeats.set(settings.beatsVisible);
       this.loop.set(song.repeat ?? settings.loop);
       this.metronome.set(settings.metronome);
       this.noteSound.set(settings.noteSound);
@@ -439,6 +451,7 @@ export class PlayerPage implements OnDestroy {
       this.cancelResumeCountdown();
       this.cancelColorSheetTimer();
       this.cancelTopRevealTimer();
+      this.cancelRetime();
       this.playfield()?.stop();
     });
   }
@@ -447,6 +460,7 @@ export class PlayerPage implements OnDestroy {
     this.cancelResumeCountdown();
     this.cancelColorSheetTimer();
     this.cancelTopRevealTimer();
+    this.cancelRetime();
     this.playfield()?.stop();
   }
 
@@ -687,6 +701,9 @@ export class PlayerPage implements OnDestroy {
     if (!this.timeline()) {
       return;
     }
+    this.leadInBeats.set(this.beatsVisible());
+    this.cancelRetime();
+    this.pausedBeatPosition = null;
     this.exitColorEdit();
     this.cancelResumeCountdown();
     this.resetTopControls();
@@ -714,6 +731,7 @@ export class PlayerPage implements OnDestroy {
       return;
     }
     this.playfield()?.pause();
+    this.capturePausedPosition();
     this.audio.stopAllNotes();
     this.isPlaying.set(false);
     this.isPaused.set(true);
@@ -726,6 +744,17 @@ export class PlayerPage implements OnDestroy {
     if (!this.isPaused()) {
       return;
     }
+    this.cancelRetime();
+    const timeline = this.timeline();
+    const playfield = this.playfield();
+    if (timeline && playfield && this.pausedBeatPosition !== null) {
+      const target = Math.min(
+        timeline.totalMs,
+        Math.max(0, this.pausedBeatPosition * timeline.beatMs),
+      );
+      playfield.seekTo(target);
+    }
+    this.pausedBeatPosition = null;
     this.exitColorEdit();
     this.resetTopControls();
     this.showPause.set(false);
@@ -743,6 +772,9 @@ export class PlayerPage implements OnDestroy {
   }
 
   restart(): void {
+    this.leadInBeats.set(this.beatsVisible());
+    this.cancelRetime();
+    this.pausedBeatPosition = null;
     this.exitColorEdit();
     this.cancelResumeCountdown();
     this.resetTopControls();
@@ -786,6 +818,8 @@ export class PlayerPage implements OnDestroy {
   back(): void {
     this.exitColorEdit();
     this.cancelResumeCountdown();
+    this.cancelRetime();
+    this.pausedBeatPosition = null;
     this.showBpmDialog.set(false);
     this.playfield()?.stop();
     this.audio.stopAllNotes();
@@ -981,6 +1015,19 @@ export class PlayerPage implements OnDestroy {
     if (bpm === this.bpm()) {
       return;
     }
+    if (this.isPlaying()) {
+      this.pause(true);
+    }
+
+    let beatPosition = this.pausedBeatPosition;
+    if (beatPosition === null && this.isPaused()) {
+      const timeline = this.timeline();
+      const playfield = this.playfield();
+      if (timeline && playfield && timeline.beatMs > 0) {
+        beatPosition = playfield.currentTimeMs / timeline.beatMs;
+      }
+    }
+
     this.bpm.set(bpm);
     const song = this.song();
     if (song?.midi) {
@@ -995,7 +1042,11 @@ export class PlayerPage implements OnDestroy {
     } else {
       this.settingsService.update({ defaultBpm: bpm });
     }
-    this.resetPlayback();
+
+    if (beatPosition !== null) {
+      this.pausedBeatPosition = beatPosition;
+      this.scheduleRetime(beatPosition);
+    }
   }
 
   setGap(value: number): void {
@@ -1052,6 +1103,7 @@ export class PlayerPage implements OnDestroy {
     const wasPlaying = this.isPlaying();
     const wasCountingDown = this.resumeCountdown() > 0;
     this.cancelResumeCountdown();
+    this.cancelRetime();
 
     const seek = computeSeekTarget(playfield.currentTimeMs, deltaMs, timeline);
     const target = seek.targetMusicalMs;
@@ -1060,6 +1112,8 @@ export class PlayerPage implements OnDestroy {
     this.audio.stopAllNotes();
     playfield.seekTo(seek.absoluteMs);
     this.resetHitTracking();
+    this.pausedBeatPosition =
+      !wasPlaying && timeline.beatMs > 0 ? seek.absoluteMs / timeline.beatMs : null;
 
     if (this.isFinished() && target < musicalTotal) {
       this.isFinished.set(false);
@@ -1077,6 +1131,7 @@ export class PlayerPage implements OnDestroy {
       this.isPaused.set(false);
       this.isFinished.set(true);
       this.showPause.set(true);
+      this.pausedBeatPosition = null;
       return;
     }
 
@@ -1121,6 +1176,8 @@ export class PlayerPage implements OnDestroy {
 
   onFinished(): void {
     this.cancelResumeCountdown();
+    this.cancelRetime();
+    this.pausedBeatPosition = null;
     this.audio.stopAllNotes();
     this.isPlaying.set(false);
     this.isPaused.set(false);
@@ -1194,7 +1251,40 @@ export class PlayerPage implements OnDestroy {
     this.playfield()?.clearHitEffects();
   }
 
+  private cancelRetime(): void {
+    if (this.retimeTimer !== null) {
+      clearTimeout(this.retimeTimer);
+      this.retimeTimer = null;
+    }
+  }
+
+  private scheduleRetime(beatPosition: number): void {
+    this.cancelRetime();
+    this.retimeTimer = setTimeout(() => {
+      this.retimeTimer = null;
+      const timeline = this.timeline();
+      const playfield = this.playfield();
+      if (!timeline || !playfield || this.isPlaying()) {
+        return;
+      }
+      const target = Math.min(timeline.totalMs, Math.max(0, beatPosition * timeline.beatMs));
+      playfield.seekTo(target);
+    }, 0);
+  }
+
+  private capturePausedPosition(): void {
+    const timeline = this.timeline();
+    const playfield = this.playfield();
+    if (!timeline || !playfield || timeline.beatMs <= 0) {
+      this.pausedBeatPosition = null;
+      return;
+    }
+    this.pausedBeatPosition = playfield.currentTimeMs / timeline.beatMs;
+  }
+
   private resetPlayback(): void {
+    this.cancelRetime();
+    this.pausedBeatPosition = null;
     this.cancelResumeCountdown();
     this.resetHitTracking();
     this.playfield()?.stop();
@@ -1278,14 +1368,17 @@ export class PlayerPage implements OnDestroy {
     }
     try {
       const buffer = decodeMidiSource(song.midiSource);
-      const fileName = song.midiFileName ?? `${song.title}.mid`;
-      this.midiConfigFile.set(new File([buffer], fileName, { type: 'audio/midi' }));
+      const musicXml = isMusicXmlFileName(song.midiFileName ?? '');
+      const fileName = song.midiFileName ?? `${song.title}.${musicXml ? 'musicxml' : 'mid'}`;
+      this.midiConfigFile.set(
+        new File([buffer], fileName, { type: musicXml ? 'application/xml' : 'audio/midi' }),
+      );
       this.midiConfigError.set(null);
       this.showMidiConfig.set(true);
     } catch {
       this.midiConfigFile.set(null);
       this.showMidiConfig.set(false);
-      this.midiConfigError.set('No se pudo leer la fuente MIDI de esta canción.');
+      this.midiConfigError.set('No se pudo leer la fuente de esta canción.');
     }
   }
 }

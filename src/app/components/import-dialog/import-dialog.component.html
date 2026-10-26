@@ -11,9 +11,11 @@
         <p class="eyebrow">Importar</p>
         <h2 id="import-title">Importar canción</h2>
         <p class="dialog__subtitle">
-          Carga un <code>.txt</code>/<code>.json</code> de KalimbaTabs o un
-          <code>.mid</code>/<code>.midi</code>. Los MIDI se configuran al pulsar Jugar. También
-          puedes pegar el tab abajo.
+          Carga un <code>.txt</code>/<code>.json</code> de KalimbaTabs, un <code>.mid</code>/<code
+            >.midi</code
+          >
+          o un <code>.musicxml</code>/<code>.xml</code>/<code>.mxl</code>. MIDI y MusicXML se
+          configuran al pulsar Jugar. También puedes pegar el tab abajo.
         </p>
       </div>
       <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
@@ -41,7 +43,7 @@
             #fileInput
             class="dropzone__input"
             type="file"
-            accept=".txt,.json,.kalimba,.mid,.midi,text/plain,application/json,audio/midi,audio/x-midi"
+            accept=".txt,.json,.kalimba,.mid,.midi,.musicxml,.xml,.mxl,text/plain,application/json,audio/midi,audio/x-midi,application/vnd.recordare.musicxml+xml,application/xml"
             (change)="onFileInput($event)"
           />
           <div class="dropzone__icon" aria-hidden="true">
@@ -64,7 +66,7 @@
               }
             </p>
             <p class="dropzone__hint">
-              Texto para previsualizar; MIDI/JSON se importan directamente
+              Texto para previsualizar; MIDI, MusicXML y JSON se importan directamente
             </p>
           </div>
           <button class="btn btn--soft" type="button" (click)="fileInput.click()">

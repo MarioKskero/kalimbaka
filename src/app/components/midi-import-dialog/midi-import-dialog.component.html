@@ -8,12 +8,14 @@
   >
     <header class="dialog__header">
       <div>
-        <p class="eyebrow">{{ mode() === 'configure' ? 'Configurar MIDI' : 'Importar MIDI' }}</p>
+        <p class="eyebrow">
+          {{ mode() === 'configure' ? 'Configurar' : 'Importar' }} {{ sourceLabel() }}
+        </p>
         <h2 id="midi-import-title">
           {{
             mode() === 'configure'
               ? 'Elige pista y configuración'
-              : 'Elige la pista que quieres tocar'
+              : 'Elige la pista o pentagrama que quieres tocar'
           }}
         </h2>
         <p class="dialog__subtitle">{{ file().name }}</p>
@@ -61,7 +63,7 @@
     @if (loading()) {
       <div class="state">
         <span class="spinner" aria-hidden="true"></span>
-        <p>Leyendo el MIDI…</p>
+        <p>{{ isMusicXml() ? 'Leyendo la partitura…' : 'Leyendo el MIDI…' }}</p>
       </div>
     } @else if (error()) {
       <div class="state state--error">
@@ -131,8 +133,12 @@
 
           <div class="tracks">
             <div class="tracks__head">
-              <span class="field__label">Pistas del MIDI</span>
-              <span class="tag">{{ parts().length }} melódicas</span>
+              <span class="field__label">{{
+                isMusicXml() ? 'Pentagramas y pistas' : 'Pistas del MIDI'
+              }}</span>
+              <span class="tag">
+                {{ parts().length }} {{ isMusicXml() ? 'opciones' : 'melódicas' }}
+              </span>
             </div>
 
             @if (ignoredDrums() > 0) {
@@ -151,13 +157,21 @@
               >
                 <div class="track__main">
                   <strong>{{ part.name }}</strong>
-                  <span>{{ part.instrument }} · {{ channelLabel(part) }}</span>
+                  <span>
+                    {{ part.instrument }}
+                    @if (!isMusicXml()) {
+                      · {{ channelLabel(part) }}
+                    }
+                  </span>
                 </div>
                 <div class="track__meta">
                   <span class="tag">{{ part.noteCount }} notas</span>
                   <span class="tag">{{ partRange(part) }}</span>
                   @if (part.polyphonyRatio > 0.1) {
                     <span class="tag">Con acordes</span>
+                  }
+                  @if (part.kind === 'merged') {
+                    <span class="tag">Fusión</span>
                   }
                   @if (part.id === suggestedPartId()) {
                     <span class="tag tag--melody">Melodía probable</span>
@@ -171,7 +185,13 @@
         </div>
 
         <div class="dialog__right">
-          @if (selectedPart()) {
+          @if (selectedPart(); as part) {
+            @if (part.kind === 'merged') {
+              <p class="notice">
+                Se cargan todos los pentagramas. Con <strong>Quitar acordes</strong> se conserva la
+                nota más aguda de cada grupo.
+              </p>
+            }
             <div class="preview">
               <div class="preview__title">
                 <span class="field__label">Vista previa</span>

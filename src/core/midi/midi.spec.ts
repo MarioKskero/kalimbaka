@@ -77,6 +77,26 @@ describe('MIDI helpers', () => {
     expect(timeline.totalMs).toBe(3900);
   });
 
+  it('añade el margen de entrada tras la cuenta atrás', () => {
+    const data: MidiSongData = {
+      bpm: 120,
+      transposition: 0,
+      notes: makeNotes([60, 62]),
+    };
+    const timeline = buildMidiTimeline(data, getLayout(17), {
+      bpm: 120,
+      countInBeats: 4,
+      startDelayBeats: 6,
+      tailMs: 900,
+    });
+
+    expect(timeline.countInMs).toBe(2000);
+    expect(timeline.events[0].startMs).toBe(5000);
+    expect(timeline.events[0].startBeat).toBe(6);
+    expect(timeline.events[1].startMs).toBe(5500);
+    expect(timeline.totalMs).toBe(6800);
+  });
+
   it('recorta el silencio inicial al construir el timeline', () => {
     const data: MidiSongData = {
       bpm: 120,
@@ -97,7 +117,6 @@ describe('MIDI helpers', () => {
     expect(timeline.events[1].startMs).toBe(2500);
     expect(timeline.totalMs).toBe(3900);
   });
-
 
   it('mapea notas exactas, plegadas y cromáticas', () => {
     const layout = getLayout(17);

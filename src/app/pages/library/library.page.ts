@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { Calibration, getLayout, KalimbaSize } from '../../../core/kalimba';
+import { isMusicXmlFileName } from '../../../core/musicxml';
 import { ImportSongInput, Song } from '../../models/song';
 import { CalibrationService } from '../../services/calibration.service';
 import { FullscreenService } from '../../services/fullscreen.service';
@@ -80,7 +81,6 @@ export class LibraryPage {
   });
   readonly importedCount = computed(() => this.songs().filter((song) => !song.builtIn).length);
   readonly demoCount = computed(() => this.songs().filter((song) => song.builtIn).length);
-  readonly gapPercent = computed(() => Math.round(this.settings().noteGap * 100));
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -96,28 +96,6 @@ export class LibraryPage {
 
   onQueryInput(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
-  }
-
-  onBpmInput(event: Event): void {
-    const value = Number.parseInt((event.target as HTMLInputElement).value, 10);
-    if (Number.isFinite(value)) {
-      this.settingsService.update({ defaultBpm: value });
-    }
-  }
-
-  onGapInput(event: Event): void {
-    const value = Number.parseInt((event.target as HTMLInputElement).value, 10);
-    if (Number.isFinite(value)) {
-      this.settingsService.update({ noteGap: value / 100 });
-    }
-  }
-
-  toggleMetronome(): void {
-    this.settingsService.update({ metronome: !this.settings().metronome });
-  }
-
-  toggleNoteSound(): void {
-    this.settingsService.update({ noteSound: !this.settings().noteSound });
   }
 
   openImport(): void {
@@ -140,24 +118,32 @@ export class LibraryPage {
 
   handleImportFile(file: File): void {
     this.showImport.set(false);
-    if (/\.(mid|midi)$/i.test(file.name)) {
-      void this.importMidiFile(file);
+    if (/\.(mid|midi)$/i.test(file.name) || isMusicXmlFileName(file.name)) {
+      void this.importTrackFile(file);
       return;
     }
     void this.importFiles([file]);
   }
 
-  private async importMidiFile(file: File): Promise<void> {
+  private async importTrackFile(file: File): Promise<void> {
     if (this.midiLoading()) {
       return;
     }
+    const musicXml = isMusicXmlFileName(file.name);
     this.midiLoading.set(true);
-    this.notify('ok', 'Leyendo MIDI…');
+    this.notify('ok', musicXml ? 'Leyendo partitura…' : 'Leyendo MIDI…');
     try {
-      const song = await this.library.importMidiFile(file);
+      const song = musicXml
+        ? await this.library.importMusicXmlFile(file)
+        : await this.library.importMidiFile(file);
       this.notify('ok', `“${song.title}” añadido. Pulsa Jugar para configurarlo.`);
     } catch (error) {
-      this.notify('error', error instanceof Error ? error.message : 'No se pudo importar el MIDI.');
+      this.notify(
+        'error',
+        error instanceof Error
+          ? error.message
+          : `No se pudo importar ${musicXml ? 'la partitura' : 'el MIDI'}.`,
+      );
     } finally {
       this.midiLoading.set(false);
     }
@@ -170,7 +156,7 @@ export class LibraryPage {
         'ok',
         result.imported.length === 1
           ? `“${result.imported[0].title}” añadido.`
-          : `${result.imported.length} tabs añadidos.`,
+          : `${result.imported.length} canciones añadidas.`,
       );
     }
     if (result.errors.length > 0) {

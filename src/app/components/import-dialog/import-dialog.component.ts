@@ -127,7 +127,7 @@ export class ImportDialogComponent {
   }
 
   private async loadFile(file: File): Promise<void> {
-    if (/\.(mid|midi|json)$/i.test(file.name)) {
+    if (/\.(mid|midi|json|musicxml|xml|mxl)$/i.test(file.name)) {
       this.externalFile.emit(file);
       return;
     }

@@ -12,6 +12,7 @@ import {
   MidiMappingReason,
   MidiNoteData,
   MidiNoteMapping,
+  MidiPart,
   MidiPartStats,
   MidiReduction,
   MidiSongData,
@@ -41,6 +42,7 @@ export const STRICT_MIDI_REDUCTION: MidiReduction = {
 export interface MidiTimelineOptions {
   bpm: number;
   countInBeats?: number;
+  startDelayBeats?: number;
   tailMs?: number;
   reduction?: MidiReduction;
 }
@@ -71,6 +73,23 @@ function pitchClass(midi: number): number {
 
 export function midiNoteName(midi: number): string {
   return `${NOTE_NAMES[pitchClass(midi)]}${Math.floor(midi / 12) - 1}`;
+}
+
+export function melodyScore(part: MidiPart): number {
+  const instrument = part.instrument.toLowerCase();
+  let bonus = 0;
+  if (
+    /(flute|violin|lead|melody|vocal|voice|whistle|ocarina|kalimba|piano|guitar|strings)/.test(
+      instrument,
+    )
+  ) {
+    bonus += 30;
+  }
+  if (/(bass|drum|percussion|pad)/.test(instrument)) {
+    bonus -= 30;
+  }
+  const monophony = (1 - part.polyphonyRatio) * 25;
+  return part.averageMidi * 2 + Math.min(part.noteCount, 500) * 0.08 + bonus + monophony;
 }
 
 export function reduceChordGroup(
@@ -607,6 +626,7 @@ export function buildMidiTimeline(
   const beatMs = 60000 / bpm;
   const countInBeats = Math.max(0, Math.round(options.countInBeats ?? 4));
   const countInMs = countInBeats * beatMs;
+  const startDelayMs = Math.max(0, options.startDelayBeats ?? 0) * beatMs;
   const sourceBpm = data.bpm > 0 ? data.bpm : bpm;
   const scale = sourceBpm / bpm;
   const tailMs = Math.max(0, options.tailMs ?? 900);
@@ -620,7 +640,7 @@ export function buildMidiTimeline(
 
   const events: TimelineEvent[] = groups.map((group, eventIndex) => {
     const reduced = reduceChordGroup(group, reduction);
-    const startMs = countInMs + Math.max(0, group[0].startMs - firstStartMs) * scale;
+    const startMs = countInMs + startDelayMs + Math.max(0, group[0].startMs - firstStartMs) * scale;
     const durationMs = Math.max(60, Math.max(...reduced.map((note) => note.durationMs)) * scale);
     const playableNotes: Array<{ lane: number; label: string }> = [];
     const lanes = new Set<number>();
@@ -684,7 +704,7 @@ export function buildMidiTimeline(
     events,
     beatMs,
     countInMs,
-    totalMs: countInMs + endMs + tailMs,
+    totalMs: countInMs + startDelayMs + endMs + tailMs,
     bpm,
     noteFill: 1,
   };

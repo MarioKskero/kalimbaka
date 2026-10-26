@@ -16,6 +16,7 @@ import {
   generateApproxTab,
   midiNoteName,
 } from '../../../core/midi';
+import { isMusicXmlFileName } from '../../../core/musicxml';
 import { ImportSongInput, Song } from '../../models/song';
 
 @Component({
@@ -37,6 +38,7 @@ export class TabViewerDialogComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isMidi = computed(() => !!this.song().midi);
+  readonly isMusicXml = computed(() => isMusicXmlFileName(this.song().midiFileName ?? ''));
   readonly midiStats = computed(() => {
     const midi = this.song().midi;
     if (!midi) {
@@ -126,7 +128,11 @@ export class TabViewerDialogComponent {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${this.song().title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'midi'}-tab-aprox.txt`;
+    link.download = `${
+      this.song()
+        .title.replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-|-$/g, '') || 'midi'
+    }-tab-aprox.txt`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -183,8 +189,7 @@ export class TabViewerDialogComponent {
       const name = midiNoteName(note.midi + midi.transposition).padEnd(5, ' ');
       return `${time}s  ${name}  ${Math.round(note.durationMs)} ms`;
     });
-    const more =
-      midi.notes.length > limit ? `\n… y ${midi.notes.length - limit} notas más.` : '';
+    const more = midi.notes.length > limit ? `\n… y ${midi.notes.length - limit} notas más.` : '';
 
     return `${header.join('\n')}\n${lines.join('\n')}${more}`;
   }

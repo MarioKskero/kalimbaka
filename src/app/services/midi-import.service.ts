@@ -1,22 +1,15 @@
 import { Injectable } from '@angular/core';
 import { Midi } from '@tonejs/midi';
-import { groupNotesByStart, MidiAnalysis, MidiNoteData, MidiPart } from '../../core/midi';
+import {
+  groupNotesByStart,
+  melodyScore,
+  MidiAnalysis,
+  MidiNoteData,
+  MidiPart,
+} from '../../core/midi';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function melodyScore(part: MidiPart): number {
-  const instrument = part.instrument.toLowerCase();
-  let bonus = 0;
-  if (/(flute|violin|lead|melody|vocal|voice|whistle|ocarina|kalimba|piano|guitar|strings)/.test(instrument)) {
-    bonus += 30;
-  }
-  if (/(bass|drum|percussion|pad)/.test(instrument)) {
-    bonus -= 30;
-  }
-  const monophony = (1 - part.polyphonyRatio) * 25;
-  return part.averageMidi * 2 + Math.min(part.noteCount, 500) * 0.08 + bonus + monophony;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -3,12 +3,12 @@
     @if (song.midiSource && !song.midi) {
       <div class="player-message">
         @if (midiConfigError()) {
-          <h1>No se pudo abrir el MIDI</h1>
+          <h1>No se pudo abrir {{ isMusicXmlSong() ? 'la partitura' : 'el MIDI' }}</h1>
           <p>{{ midiConfigError() }}</p>
           <button class="btn btn--primary" type="button" (click)="back()">Volver</button>
         } @else {
           <span class="spinner" aria-hidden="true"></span>
-          <p>Configurando MIDI…</p>
+          <p>Configurando {{ isMusicXmlSong() ? 'partitura' : 'MIDI' }}…</p>
         }
       </div>
     } @else if (timeline(); as timeline) {
@@ -202,7 +202,7 @@
             </span>
             @if (song.midiSource) {
               <button class="btn btn--soft" type="button" (click)="openMidiConfig()">
-                Configurar MIDI
+                {{ midiConfigLabel() }}
               </button>
             } @else if (canSwitchSize()) {
               <button class="btn btn--soft" type="button" (click)="switchToRecommended()">
@@ -366,9 +366,10 @@
                         {{ size() }} teclas configuradas para esta canción.
                         @if (song.midiSource) {
                           Cámbialo desde “Listo para tocar” con
-                          <strong>Configurar MIDI</strong>.
+                          <strong>{{ midiConfigLabel() }}</strong
+                          >.
                         } @else {
-                          Vuelve a importar el MIDI para cambiar la configuración.
+                          Vuelve a importar el archivo para cambiar la configuración.
                         }
                       </p>
                     </div>
@@ -540,9 +541,10 @@
                   </button>
 
                   <p class="settings__hint">
-                    Cambiar el tamaño, el tempo o la pausa reinicia la canción. Activa el sonido de
-                    notas para escuchar la melodía y graduar el tempo. La calibración es común para
-                    todas las canciones y tamaños.
+                    Cambiar el tamaño o la articulación reinicia la canción; el tempo se puede
+                    cambiar sin perder el punto de reproducción. Activa el sonido de notas para
+                    escuchar la melodía y graduar el tempo. La calibración es común para todas las
+                    canciones y tamaños.
                   </p>
                 </div>
               }
@@ -589,7 +591,8 @@
                   <div class="player-modal__config">
                     @if (song.midi.trackName) {
                       <span>
-                        <strong>Pista</strong>{{ song.midi.trackName }}
+                        <strong>{{ trackLabel() }}</strong
+                        >{{ song.midi.trackName }}
                         @if (song.midi.channel !== undefined) {
                           · Canal {{ song.midi.channel + 1 }}
                         }
@@ -603,14 +606,14 @@
                 @if (unsupportedCount() > 0) {
                   <div class="player-modal__warning">
                     <p>
-                      Este tab no encaja completo en {{ size() }} teclas.
+                      Esta canción no encaja completa en {{ size() }} teclas.
                       @if (recommended()) {
                         Necesita al menos {{ recommended() }}.
                       }
                     </p>
                     @if (song.midiSource) {
                       <button class="btn btn--soft" type="button" (click)="openMidiConfig()">
-                        Configurar MIDI
+                        {{ midiConfigLabel() }}
                       </button>
                     } @else if (canSwitchSize()) {
                       <button class="btn btn--soft" type="button" (click)="switchToRecommended()">
@@ -689,7 +692,7 @@
                   </button>
                   @if (song.midiSource) {
                     <button class="btn btn--ghost" type="button" (click)="openMidiConfig()">
-                      Configurar MIDI
+                      {{ midiConfigLabel() }}
                     </button>
                   }
                   @if (fullscreen.supported && !fullscreen.isActive()) {

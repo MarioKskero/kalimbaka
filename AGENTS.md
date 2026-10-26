@@ -7,9 +7,9 @@ Este documento resume la arquitectura, las reglas de negocio y las trampas conoc
 - App Angular 22 standalone + SCSS + signals.
 - Sin backend. Persistencia en `localStorage`.
 - Reproductor en canvas + WebAudio.
-- Importación de tabs de texto y MIDI (`@tonejs/midi`).
+- Importación de tabs de texto, MIDI (`@tonejs/midi`) y MusicXML/MXL (`fflate`).
 - Tests con Vitest vía `ng test`.
-- Actualmente: **107 tests pasando** y `npm run build` correcto.
+- Actualmente: **120 tests pasando** y `npm run build` correcto.
 - El proyecto está dentro de un repositorio git. No hagas commits salvo que se pida explícitamente.
 - La base `/kalimbaka/` se aplica en `deploy.sh` con `--base-href`; la configuración de producción no fija `baseHref`.
 
@@ -37,6 +37,7 @@ No uses `npm test -- --run`; el flag correcto es `--watch=false`.
 - Alpine Linux, Node 24 (probado con 24.22.1), npm 11.
 - Angular 22.2.x, TypeScript ~6.0, Vitest 5 + jsdom 30.
 - `@tonejs/midi` 2.0.28. Es CommonJS: está declarado en `angular.json` → `allowedCommonJsDependencies`.
+- `fflate` 0.8.3 (MIT) para descomprimir `.mxl`. Solo se usa en el parser MusicXML.
 - El scaffold es zoneless/signals. Evita introducir `zone.js` sin motivo.
 - Presupuesto de estilos por componente: warning 16 kB, error 32 kB.
 - El servidor de desarrollo debe escuchar en `0.0.0.0:4300`.
@@ -46,13 +47,14 @@ No uses `npm test -- --run`; el flag correcto es `--watch=false`.
 ```text
 src/core/kalimba/   dominio puro de kalimba (sin Angular)
 src/core/midi/      dominio puro MIDI (sin Angular)
+src/core/musicxml/  parser MusicXML/MXL y fusión de pentagramas (sin Angular)
 src/app/models/     Song e inputs de importación
-src/app/services/   biblioteca, ajustes, calibración, audio, fullscreen, parser MIDI
+src/app/services/   biblioteca, ajustes, calibración, audio, fullscreen, parsers MIDI/MusicXML
 ngsw-config.json    configuración del service worker (app + canciones)
 public/manifest.webmanifest + public/icons/  manifest e iconos PWA
 src/app/components/ presentacionales: tarjetas, diálogos, canvas, calibración, visor
 src/app/pages/      library.page y player.page
-public/songs/       tabs/MIDI de demo + index.json
+public/songs/       tabs/MIDI/MusicXML de demo + index.json
 ```
 
 Rutas:
@@ -86,22 +88,23 @@ interface Song {
   createdAt: number;
   repeat?: boolean;
   midi?: MidiSongData;
-  midiSource?: string; // MIDI original en base64, para reconfigurar
-  midiFileName?: string;
+  midiSource?: string; // fuente original (MIDI o MusicXML) en base64
+  midiFileName?: string; // extensión .mid/.musicxml/.xml/.mxl para elegir el parser
 }
 ```
 
-- Para canciones MIDI configuradas, `midi` existe y `tabText` es `''`.
-- Para MIDI pendientes de configurar, `midiSource` existe y `midi` es `undefined`. El reproductor debe abrir el diálogo de configuración antes de construir el timeline.
-- `Song.kalimbaSize` es el tamaño guardado con la configuración MIDI. En MIDI configurado, el reproductor usa ese tamaño; en texto, `settings.kalimbaSize`.
+- Para canciones MIDI/MusicXML configuradas, `midi` existe y `tabText` es `''`.
+- Para pistas pendientes de configurar, `midiSource` existe y `midi` es `undefined`. El reproductor debe abrir el diálogo de configuración antes de construir el timeline.
+- `Song.kalimbaSize` es el tamaño guardado con la configuración de la pista. En pistas configuradas, el reproductor usa ese tamaño; en texto, `settings.kalimbaSize`.
 - El reproductor debe bifurcar por `song.midi` y `song.midiSource`.
-- No mezclar la lógica de tab de texto y MIDI en la misma rama sin comprobar `midi`.
+- No mezclar la lógica de tab de texto y pista en la misma rama sin comprobar `midi`.
+- La extensión de `midiFileName` decide si la fuente se parsea como MIDI o MusicXML.
 
 ### MidiSongData
 
 ```ts
 interface MidiSongData {
-  bpm: number; // BPM original del MIDI (para escalar tiempos)
+  bpm: number; // BPM original de la pista importada (para escalar tiempos)
   transposition: number; // semitonos aplicados
   notes: MidiNoteData[]; // startMs/durationMs/midi/velocity
   trackId?: string;
@@ -158,7 +161,21 @@ interface MidiReduction {
 - Las entradas MIDI **no** fijan `track`, `transposition`, `reduction`, `bpm` ni `kalimba`. La app las ignora: cada usuario configura la canción al pulsar Jugar por primera vez.
 - `title` es opcional en entradas MIDI; se usa el título del MIDI como fallback.
 - El índice se carga al iniciar y se cachea con `?v=timestamp` + `cache: no-store`.
-- Una entrada inválida puede tumbar todas las demos porque `loadBuiltIns` usa `Promise.all`. Valida archivos e IDs.
+
+### MusicXML
+
+```json
+{
+  "id": "song-musicxml",
+  "title": "Song (MusicXML)",
+  "artist": "Composer",
+  "musicxml": "song.mxl"
+}
+```
+
+- `musicxml` o `file` con extensión `.musicxml`/`.xml`/`.mxl`.
+- Las entradas MusicXML tampoco fijan pista ni configuración; la app genera una pista por pentagrama y, si hay varios, una fusión **Ambas manos**.
+- `loadBuiltIns` aísla errores por entrada: una demo inexistente o inválida se omite en silencio y no tumba el resto. Aun así, valida archivos e IDs.
 
 ## 8. Formato de tabs de texto
 
@@ -184,8 +201,9 @@ interface MidiReduction {
 - `buildTimeline` coloca eventos cada `1 / eventsPerBeat` de beat.
 - `pauseAfterBeats` se mide en beats completos.
 - `startBeat` puede ser fraccionario.
+- `startDelayBeats` añade un margen de entrada tras la cuenta atrás para que las notas no caigan durante el contador.
 - La duración de nota es `beatMs * (1 / eventsPerBeat) * noteFill`.
-- `totalMs` incluye count-in y pausas.
+- `totalMs` incluye count-in, margen de entrada y pausas.
 - El metrónomo usa `timeMs / beatMs`; con grid 2 o 4 sigue marcando beats musicales, no cada evento.
 
 ## 10. MIDI: invariantes
@@ -199,7 +217,8 @@ const scale = sourceBpm / bpm;
 **No invertir esta fórmula.** Subir BPM debe acortar los tiempos; bajar BPM debe alargarlos.
 
 - `countInMs` usa el BPM actual.
-- `startMs = countInMs + (note.startMs - firstStart) * scale`.
+- `startMs = countInMs + startDelayMs + (note.startMs - firstStart) * scale`.
+- `startDelayBeats` y `totalMs` incluyen el margen de entrada; `countInMs` sigue marcando solo el contador visible.
 - Se recorta el silencio inicial por pista en `MidiImportService` y también al construir el timeline.
 - Se usa el tempo inicial; los cambios internos de tempo no mueven el metrónomo.
 
@@ -235,27 +254,39 @@ Orden:
 - Se sugiere melodía por altura media, número de notas, monofonía e instrumento y se preselecciona al configurar la canción; el usuario puede cambiarla.
 - El catálogo MIDI no fija pista.
 
+### MusicXML
+
+- `src/core/musicxml` parsea `score-partwise` con `DOMParser`; `.mxl` se descomprime con `fflate`.
+- La salida reutiliza `MidiAnalysis`/`MidiPart`: el resto del diálogo, reducción y timeline no cambia.
+- Cada `<part>` con varios `<staff>` genera una pista por pentagrama y una pista sintética `merged` (“Ambas manos”).
+- La fusión deduplica unísonos simultáneos y conserva la alineación temporal de las manos.
+- La melodía probable se calcula solo entre pistas no fusionadas.
+- Los IDs de pista deben ser deterministas (`musicxml:<parte>:staff:<n>`, `musicxml:<parte>:merge`) para recuperar la configuración guardada.
+- Se usa el tempo inicial; los cambios internos se ignoran. Se omiten notas de adorno y percusión no afinada.
+- En MusicXML no se guarda `channel`; el diálogo oculta “Canal” y usa “Pentagrama”.
+
 ## 11. Reproductor
 
 - El canvas dibuja y emite `noteHit` al cruzar `startMs`; el audio usa ese evento.
-- En texto, el reproductor usa `settings.kalimbaSize`; en MIDI configurado usa `Song.kalimbaSize`. En MIDI sin configurar usa el tamaño base de ajustes y abre el diálogo de configuración antes de crear el timeline.
-- El diálogo MIDI parte del BPM original del MIDI y de `RECOMMENDED_MIDI_REDUCTION` (octavas, cromatismos y quitar acordes). La pista se preselecciona con la melodía probable; la transposición se calcula con **Auto** y se puede ajustar a mano.
+- En texto, el reproductor usa `settings.kalimbaSize`; en MIDI/MusicXML configurado usa `Song.kalimbaSize`. En una pista sin configurar usa el tamaño base de ajustes y abre el diálogo de configuración antes de crear el timeline.
+- El diálogo de pista parte del BPM original de la pista y de `RECOMMENDED_MIDI_REDUCTION` (octavas, cromatismos y quitar acordes). La pista se preselecciona con la melodía probable; la transposición se calcula con **Auto** y se puede ajustar a mano.
 - En la primera configuración, el diálogo ofrece **Aplicar recomendados**: pista sugerida, BPM original, tamaño base, `RECOMMENDED_MIDI_REDUCTION` y transposición Auto. Tras aplicarlo, el botón pasa a **Guardar configuración**; si la configuración deja de coincidir con la recomendada, vuelve a **Aplicar recomendados**. La X de al lado cierra descartando cambios.
-- La configuración MIDI se guarda en la canción. **“Listo para tocar”** debe mostrar pista, transposición y reducción, y permitir reabrir el diálogo con **Configurar MIDI**.
-- Mantén los avisos y el selector de tamaño en canciones de texto. En MIDI configurado, el tamaño se cambia desde **Configurar MIDI**, no desde el selector global.
+- La configuración se guarda en la canción. **“Listo para tocar”** debe mostrar pista/pentagrama, transposición y reducción, y permitir reabrir el diálogo con **Configurar MIDI** o **Configurar partitura**.
+- Mantén los avisos y el selector de tamaño en canciones de texto. En MIDI/MusicXML configurado, el tamaño se cambia desde el configurador de pista, no desde el selector global.
 - El tick del HUD se emite a ~15 fps.
 - **Pausa**: congela pantalla y audio sin abrir modal.
 - **Engranaje**: pausa y abre modal de ajustes.
 - **Atrás**: durante la partida abre el menú de pausa; si no, vuelve a la biblioteca.
 - **−10/+10 s**: barra superior, modal y flechas; usa tiempo musical sin count-in.
 - **Reanudar**: cuenta atrás opcional 0–4; por defecto 0.
-- **Tempo rápido**: el botón de tempo de la cabecera de juego sustituye al de colores, muestra el porcentaje respecto al BPM base (`bpm / baseBpm`) y abre un diálogo con slider 30–240 y multiplicadores 0,25×/0,5×/0,75×/1×/1,25×. Se calculan sobre el BPM base (`song.midi?.bpm ?? song.bpm`), no sobre el BPM actual. Si se abre durante la reproducción, pausa antes.
+- El margen de entrada tras la cuenta atrás se fija al iniciar/reiniciar con las notas visibles configuradas; las notas empiezan a caer al acabar el contador.
+- **Tempo rápido**: el botón de tempo de la cabecera de juego sustituye al de colores, muestra el porcentaje respecto al BPM base (`bpm / baseBpm`) y abre un diálogo con slider 30–240 y multiplicadores 0,25×/0,5×/0,75×/1×/1,25×. Se calculan sobre el BPM base (`song.midi?.bpm ?? song.bpm`), no sobre el BPM actual. Si se abre durante la reproducción, pausa antes. Al cambiar el BPM se conserva el pulso actual; reanudar continúa desde ese punto.
 - **HUD inferior**: “Ahora” se vacía durante silencios; “Siguiente” salta rests y muestra la próxima nota real.
 - Durante la reproducción la cabecera desaparece para dejar ver la caída de notas; un botón circular flotante con chevron en la parte superior la muestra de nuevo y vuelve a ocultarse a los ~3,2 s. Durante la cuenta atrás inicial permanece visible y se pliega al terminar. El HUD (Ahora, progreso y Siguiente) vive abajo, siempre visible y semitransparente.
 - La línea de golpe del reproductor está al 2/3 de la altura (un tercio desde abajo), con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido. Los carriles y teclas solo se iluminan con pulsaciones manuales (touch o teclado), no con notas automáticas; la línea de golpe es fija y sin brillo. El círculo destino se ilumina automáticamente cuando la nota entra en él, como guía de timing.
 - Aciertos manuales: `judge.ts` compara la pulsación con la nota del carril (perfecto ±60 ms, bien ±130 ms). Solo se juzga la primera pulsación de cada `evento:carril`; el playback automático no genera efectos. `FallingNotesComponent.triggerHitEffect` dibuja un burst local y la etiqueta de precisión.
 - El tamaño de nota es fijo (según el ancho/carril). `computeNoteScroll` mantiene la separación vertical mínima según la rejilla y reduce los pulsos visibles si la altura no da para el tamaño configurado; no se comprime la zona de caída.
-- La canción se reinicia al cambiar tamaño, BPM o articulación. Las pausas de frase son fijas: una línea en blanco = 1 beat.
+- La canción se reinicia al cambiar tamaño o articulación. Cambiar BPM conserva la posición musical y reanudar continúa desde el mismo punto. Las pausas de frase son fijas: una línea en blanco = 1 beat.
 - El loop de MIDI usa el ajuste de loop, no un `repeat` de canción.
 - La app intenta fullscreen en el primer gesto y ofrece un icono para reintentarlo. `FullscreenService.isActive` debe reflejar `fullscreenchange`; no marcarlo activo de forma optimista.
 - Volver del reproductor a la biblioteca no debe salir de fullscreen. El único control de la app para salir es el icono de la biblioteca, que alterna entrar/salir.
@@ -275,6 +306,8 @@ Claves:
 - `kalimbapp.calibration.v1`
 - `kalimbapp.keyboard.v1`
 - `kalimbapp.builtin-midi.v2`
+
+`songs.v1` guarda la fuente original base64 de pistas MIDI/MusicXML; `builtin-midi.v2` guarda la configuración elegida para las demos de ambos formatos (el nombre se mantiene por compatibilidad).
 
 Calibración:
 
@@ -316,6 +349,8 @@ Cubre como mínimo:
 - importación MIDI y recorte de silencio;
 - mapeo exacto/octava/snap;
 - reducción y eliminación de acordes;
+- parseo MusicXML (notas, acordes, silencios, ataduras, pentagramas, metadatos y MXL);
+- fusión de pentagramas y deduplicación de unísonos;
 - exportación aproximada.
 
 La UI/canvas no tiene tests automatizados. Para cambios visuales, prueba manualmente en landscape y, si es posible, en un móvil real.
@@ -334,6 +369,13 @@ La UI/canvas no tiene tests automatizados. Para cambios visuales, prueba manualm
 2. Añadir entrada con `id`, `title`, `artist` y `midi` (sin pista, transposición ni reducción).
 3. Verificar que el MIDI se parsea. La pista y la configuración se eligen al pulsar Jugar.
 4. Recargar, configurar la demo y comprobar el informe de reducción.
+
+### Añadir una canción MusicXML
+
+1. Copiar `.musicxml`, `.xml` o `.mxl` a `public/songs/`.
+2. Añadir entrada con `id`, `title`, `artist` y `musicxml` (sin pista, transposición ni reducción).
+3. Verificar que el parser genera pentagramas y la fusión si hay varios.
+4. Recargar, configurar la demo (incluida **Ambas manos**) y comprobar el informe.
 
 ### Cambiar el parser
 
@@ -369,17 +411,22 @@ La UI/canvas no tiene tests automatizados. Para cambios visuales, prueba manualm
 
 - `npm test -- --run` no funciona; usar `--watch=false`.
 - El catálogo de demos no se recarga solo: hace falta recarga completa.
-- El `Promise.all` de demos es frágil ante una entrada mala.
+- `loadBuiltIns` aísla errores por demo y los omite en silencio; no volver a un `Promise.all` que aborte todo o muestre un aviso por una entrada mala.
 - `@tonejs/midi` es CommonJS; no quitar `allowedCommonJsDependencies`.
+- `fflate` solo debe usarse para `.mxl`; no leer un `.mxl` como texto.
 - No invertir la escala de BPM MIDI.
 - No añadir líneas en blanco accidentales a tabs generados.
 - No contar notas de acordes eliminados como “omitidas” en los avisos de pérdida.
 - La calibración es global; no volver a indexarla por tamaño de kalimba.
 - No intentar conservar cromatismos exactos en una kalimba C major: es imposible sin retunear.
-- `Song.tabText` vacío es normal en MIDI; bifurca por `song.midi` y `song.midiSource`.
-- Un MIDI sin configurar tiene `midiSource` pero no `midi`; el reproductor debe abrir la configuración y no mostrar “tab sin notas”.
-- El visor muestra el tab de texto original; el MIDI configurado muestra notas, no un tab normal. Un MIDI pendiente no tiene visor.
-- No vuelvas a fijar pista/transposición/reducción en el catálogo MIDI. La pista se preselecciona con la melodía probable; la transposición se sugiere con Auto en la primera configuración.
+- `Song.tabText` vacío es normal en MIDI/MusicXML; bifurca por `song.midi` y `song.midiSource`.
+- Una pista sin configurar tiene `midiSource` pero no `midi`; el reproductor debe abrir la configuración y no mostrar “tab sin notas”.
+- El visor muestra el tab de texto original; una pista MIDI/MusicXML configurada muestra notas, no un tab normal. Una pista pendiente no tiene visor.
+- No vuelvas a fijar pista/transposición/reducción en el catálogo MIDI/MusicXML. La pista se preselecciona con la melodía probable; la transposición se sugiere con Auto en la primera configuración.
+- MusicXML solo admite `score-partwise`; no añadas soporte de `.mscz`, `.gp*`, PDF u OMR sin pedirlo.
+- La pista fusionada de MusicXML no debe ser la melodía probable ni auto-seleccionarse por defecto.
+- Los IDs `musicxml:<parte>:staff:<n>` y `musicxml:<parte>:merge` deben seguir siendo deterministas para recuperar la configuración.
+- No guardes `channel` en `MidiSongData` para MusicXML; el diálogo debe usar “Pentagrama”.
 - El formato de texto MIDI personalizado se retiró; no lo reintroduzcas sin pedirlo.
 - La app es PWA en producción: service worker, manifest e iconos. El shell y `public/songs` se precargan; en desarrollo el SW está desactivado. `PwaInstallService` captura `beforeinstallprompt` y la biblioteca muestra un botón de instalar cuando está disponible. No hay detección por micrófono.
 - Las demos musicales tienen derechos de sus autores; no añadas contenido sin permiso.

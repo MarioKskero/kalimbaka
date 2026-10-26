@@ -30,7 +30,7 @@
 
   <div class="song-card__meta">
     @if (hasMidi()) {
-      <span class="tag tag--midi">MIDI</span>
+      <span class="tag tag--midi">{{ isMusicXml() ? 'MusicXML' : 'MIDI' }}</span>
       @if (!song().midi) {
         <span class="tag">Sin configurar</span>
       } @else if (song().midi?.reduction?.removeChords) {

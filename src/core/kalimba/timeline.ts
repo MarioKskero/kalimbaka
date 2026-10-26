@@ -4,6 +4,7 @@ export interface TimelineOptions {
   bpm: number;
   noteGap?: number;
   countInBeats?: number;
+  startDelayBeats?: number;
   phraseMode?: PhraseMode;
   phrasePauseBeats?: number;
   eventsPerBeat?: number;
@@ -44,6 +45,7 @@ export function buildTimeline(resolved: ResolvedTab, options: TimelineOptions): 
   const noteFill = 1 - clamp(options.noteGap ?? 0.15, 0, 0.8);
   const countInBeats = Math.max(0, Math.round(options.countInBeats ?? 4));
   const countInMs = countInBeats * beatMs;
+  const startDelayBeats = Math.max(0, options.startDelayBeats ?? 0);
   const eventsPerBeat = Math.min(8, Math.max(1, Math.round(options.eventsPerBeat ?? 1)));
   const beatsPerEvent = 1 / eventsPerBeat;
   const phraseMode = options.phraseMode ?? 'blank';
@@ -53,7 +55,7 @@ export function buildTimeline(resolved: ResolvedTab, options: TimelineOptions): 
   let beatCursor = 0;
 
   const events: TimelineEvent[] = resolved.events.map((event, index) => {
-    const startBeat = beatCursor;
+    const startBeat = startDelayBeats + beatCursor;
     beatCursor += beatsPerEvent;
 
     const isLast = index === resolved.events.length - 1;
@@ -100,7 +102,7 @@ export function buildTimeline(resolved: ResolvedTab, options: TimelineOptions): 
     };
   });
 
-  const totalMs = countInMs + beatCursor * beatMs;
+  const totalMs = countInMs + (startDelayBeats + beatCursor) * beatMs;
 
   return {
     events,

@@ -139,61 +139,6 @@
           Calibrar pantalla
         </button>
       </section>
-
-      <section class="panel">
-        <p class="eyebrow">Ajustes rápidos</p>
-
-        <label class="range-row">
-          <span>BPM por defecto</span>
-          <strong>{{ settings().defaultBpm }}</strong>
-        </label>
-        <input
-          class="range"
-          type="range"
-          min="40"
-          max="160"
-          step="1"
-          [value]="settings().defaultBpm"
-          (input)="onBpmInput($event)"
-          aria-label="BPM por defecto"
-        />
-
-        <label class="range-row">
-          <span>Articulación entre notas</span>
-          <strong>{{ gapPercent() }}%</strong>
-        </label>
-        <input
-          class="range"
-          type="range"
-          min="0"
-          max="40"
-          step="1"
-          [value]="gapPercent()"
-          (input)="onGapInput($event)"
-          aria-label="Articulación entre notas"
-        />
-        <p class="panel__hint">No cambia el tempo; solo acorta la nota.</p>
-
-        <button
-          class="toggle-row"
-          type="button"
-          [class.toggle-row--on]="settings().metronome"
-          (click)="toggleMetronome()"
-        >
-          <span>Metrónomo</span>
-          <span class="toggle-row__switch" aria-hidden="true"></span>
-        </button>
-
-        <button
-          class="toggle-row"
-          type="button"
-          [class.toggle-row--on]="settings().noteSound"
-          (click)="toggleNoteSound()"
-        >
-          <span>Sonido de notas</span>
-          <span class="toggle-row__switch" aria-hidden="true"></span>
-        </button>
-      </section>
     </aside>
 
     <section class="content">
@@ -254,7 +199,7 @@
         <div class="empty">
           <div class="empty__icon" aria-hidden="true">♪</div>
           <h2>No hay tabs todavía</h2>
-          <p>Importa un tab de KalimbaTabs, un MIDI o pega las notas directamente.</p>
+          <p>Importa un tab de KalimbaTabs, un MIDI, un MusicXML o pega las notas directamente.</p>
           <button class="btn btn--primary" type="button" (click)="openImport()">
             Importar mi primera canción
           </button>
@@ -399,9 +344,11 @@
               Ajusta el BPM y la pausa a tu gusto.
             </p>
             <p>
-              También puedes importar un archivo <code>.mid</code>. Al pulsar Jugar por primera vez
-              eliges la pista, el tamaño y la configuración; la app ignorará la percusión y usará
-              los tiempos reales del MIDI. Después podrás cambiarlo desde “Listo para tocar”.
+              También puedes importar <code>.mid</code>/<code>.midi</code> o partituras
+              <code>.musicxml</code>/<code>.xml</code>/<code>.mxl</code>. Al pulsar Jugar por
+              primera vez eliges la pista o pentagrama, el tamaño y la configuración; en MusicXML
+              puedes elegir una mano o fusionar ambas. Después podrás cambiarlo desde “Listo para
+              tocar”.
             </p>
           </div>
         </div>

@@ -34,6 +34,8 @@ export interface MidiSongData {
   reduction?: MidiReduction;
 }
 
+export type MidiPartKind = 'track' | 'staff' | 'merged';
+
 export interface MidiPart {
   id: string;
   name: string;
@@ -46,11 +48,13 @@ export interface MidiPart {
   averageMidi: number;
   polyphonyRatio: number;
   isDrum: boolean;
+  kind?: MidiPartKind;
 }
 
 export interface MidiAnalysis {
   fileName: string;
   title: string;
+  artist?: string;
   bpm: number;
   durationMs: number;
   parts: MidiPart[];

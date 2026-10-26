@@ -20,8 +20,10 @@ import {
   midiNoteName,
   suggestTransposition,
 } from '../../../core/midi';
+import { isMusicXmlFileName } from '../../../core/musicxml';
 import { MidiImportSongInput } from '../../models/song';
 import { MidiImportService } from '../../services/midi-import.service';
+import { MusicXmlImportService } from '../../services/musicxml-import.service';
 
 @Component({
   selector: 'app-midi-import-dialog',
@@ -43,14 +45,17 @@ export class MidiImportDialogComponent implements OnInit {
   readonly mode = input<'import' | 'configure'>('import');
   readonly firstConfig = input(false);
   readonly showMetadata = input(true);
-  readonly submitLabel = input<string>('Importar MIDI');
+  readonly submitLabel = input<string>('Importar pista');
 
   readonly closed = output<void>();
   readonly submitted = output<MidiImportSongInput>();
 
   private readonly midiService = inject(MidiImportService);
+  private readonly musicXmlService = inject(MusicXmlImportService);
 
   readonly sizes: readonly KalimbaSize[] = [8, 17, 21];
+  readonly isMusicXml = computed(() => isMusicXmlFileName(this.file().name));
+  readonly sourceLabel = computed(() => (this.isMusicXml() ? 'MusicXML' : 'MIDI'));
 
   readonly analysis = signal<MidiAnalysis | null>(null);
   readonly loading = signal(true);
@@ -155,10 +160,12 @@ export class MidiImportDialogComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     try {
       const buffer = await this.file().arrayBuffer();
-      const analysis = this.midiService.analyze(buffer, this.file().name);
+      const analysis = this.isMusicXml()
+        ? this.musicXmlService.analyze(buffer, this.file().name)
+        : this.midiService.analyze(buffer, this.file().name);
       this.analysis.set(analysis);
       this.title.set(this.initialTitle() || analysis.title);
-      this.artist.set(this.initialArtist());
+      this.artist.set(this.initialArtist() || analysis.artist || '');
       this.bpm.set(this.initialBpm() ?? analysis.bpm);
       this.size.set(this.initialSize());
 
@@ -177,7 +184,11 @@ export class MidiImportDialogComponent implements OnInit {
         this.applySuggestion();
       }
     } catch {
-      this.error.set('No se pudo leer el MIDI. Comprueba que el archivo sea válido.');
+      this.error.set(
+        this.isMusicXml()
+          ? 'No se pudo leer la partitura. Comprueba que el archivo sea válido.'
+          : 'No se pudo leer el MIDI. Comprueba que el archivo sea válido.',
+      );
     } finally {
       this.loading.set(false);
     }
@@ -278,7 +289,7 @@ export class MidiImportDialogComponent implements OnInit {
       notes: part.notes,
       trackId: part.id,
       trackName: part.name,
-      channel: part.channel,
+      channel: this.isMusicXml() ? undefined : part.channel,
       instrument: part.instrument,
       reduction: this.reduction(),
     };

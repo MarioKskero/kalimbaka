@@ -2,9 +2,9 @@
   "songs": [
     {
       "id": "monkey-island-midi",
-      "title": "Monkey Island Theme (MIDI)",
+      "title": "Monkey Island Theme",
       "artist": "Xitete el Grande",
-      "midi": "monkeyisland.mid"
+      "midi": "Xitete el Grande - Monkey Island Theme.mid"
     },
     {
       "id": "ode-to-joy",
@@ -12,103 +12,103 @@
       "artist": "Ludwig van Beethoven",
       "bpm": 92,
       "kalimba": 8,
-      "file": "ode-to-joy.txt"
+      "file": "Ludwig van Beethoven - Ode to Joy.txt"
+    },
+    {
+      "id": "twinkle-twinkle-variations-musicxml",
+      "title": "12 Variations of Twinkle Twinkle Little Star",
+      "artist": "Wolfgang Amadeus Mozart",
+      "musicxml": "Wolfgang Amadeus Mozart - 12 Variations of Twinkle Twinkle Little Star.mxl"
+    },
+    {
+      "id": "mecano-me-cuesta-tanto-olvidarte-musicxml",
+      "title": "Mecano - Me cuesta tanto olvidarte",
+      "artist": "Mecano",
+      "musicxml": "varios/Mecano - Me cuesta tanto olvidarte.musicxml"
     },
     {
       "id": "hollow-knight-city-of-tears",
       "title": "Hollow Knight - City of Tears",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - City of Tears.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - City of Tears.mid"
     },
     {
       "id": "hollow-knight-dirtmouth",
       "title": "Hollow Knight - Dirtmouth",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Dirtmouth.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Dirtmouth.mid"
     },
     {
       "id": "hollow-knight-enter-hallownest",
       "title": "Hollow Knight - Enter Hallownest",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Enter Hallownest.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Enter Hallownest.mid"
     },
     {
       "id": "hollow-knight-greenpath",
       "title": "Hollow Knight - Greenpath",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Greenpath.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Greenpath.mid"
     },
     {
       "id": "hollow-knight-main-theme",
       "title": "Hollow Knight - Main Theme",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Main Theme.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Main Theme.mid"
     },
     {
       "id": "hollow-knight-mantis-lords",
       "title": "Hollow Knight - Mantis Lords",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Mantis Lords.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Mantis Lords.mid"
     },
     {
       "id": "hollow-knight-nosk",
       "title": "Hollow Knight - Nosk",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Nosk.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Nosk.mid"
     },
     {
       "id": "hollow-knight-queens-garden",
       "title": "Hollow Knight - Queen's Garden",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Queen's Garden.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Queen's Garden.mid"
     },
     {
       "id": "hollow-knight-reflection",
       "title": "Hollow Knight - Reflection",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Reflection.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Reflection.mid"
     },
     {
       "id": "hollow-knight-resting-grounds",
       "title": "Hollow Knight - Resting Grounds",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Resting Grounds.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Resting Grounds.mid"
     },
     {
       "id": "hollow-knight-soul-sanctum",
       "title": "Hollow Knight - Soul Sanctum",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - Soul Sanctum.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - Soul Sanctum.mid"
     },
     {
       "id": "hollow-knight-the-white-lady",
       "title": "Hollow Knight - The White Lady",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - The White Lady.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - The White Lady.mid"
     },
     {
       "id": "hollow-knight-white-palace",
       "title": "Hollow Knight - White Palace",
       "artist": "Xitetin",
-      "midi": "Hollow Knight/Hollow Knight - White Palace.mid"
-    },
-    {
-      "id": "imagine-dragons-believer",
-      "title": "Imagine Dragons - Believer",
-      "artist": "Imagine Dragons",
-      "midi": "Imagine Dragons/Imagine Dragons - Believer.mid"
+      "midi": "Hollow Knight/Xitetin - Hollow Knight - White Palace.mid"
     },
     {
       "id": "imagine-dragons-demons",
       "title": "Imagine Dragons - Demons",
       "artist": "Imagine Dragons",
       "midi": "Imagine Dragons/Imagine Dragons - Demons.mid"
-    },
-    {
-      "id": "imagine-dragons-enemy",
-      "title": "Imagine Dragons - Enemy",
-      "artist": "Imagine Dragons",
-      "midi": "Imagine Dragons/Imagine Dragons - Enemy.mid"
     },
     {
       "id": "imagine-dragons-radioactive",
@@ -120,7 +120,7 @@
       "id": "a-ha-take-on-me",
       "title": "a-ha - Take On Me",
       "artist": "a-ha",
-      "midi": "a-ha/a-ha - Take on Me.mid"
+      "midi": "a-ha/a-ha - Take On Me.mid"
     },
     {
       "id": "aerosmith-dream-on",
@@ -132,37 +132,13 @@
       "id": "cyndi-lauper-time-after-time",
       "title": "Cyndi Lauper - Time After Time",
       "artist": "Cyndi Lauper",
-      "midi": "varios/Cyndil - Time after time.mid"
-    },
-    {
-      "id": "disturbed-the-sound-of-silence-piano",
-      "title": "Disturbed - The Sound of Silence (Piano)",
-      "artist": "Disturbed",
-      "midi": "varios/Disturbed - Sound of Silence [Piano].mid"
-    },
-    {
-      "id": "eiffel-65-blue-piano",
-      "title": "Eiffel 65 - Blue (Piano)",
-      "artist": "Eiffel 65",
-      "midi": "varios/Eiffel65 - Blue [Piano].mid"
-    },
-    {
-      "id": "evanescence-bring-me-to-life-piano",
-      "title": "Evanescence - Bring Me To Life (Piano)",
-      "artist": "Evanescence",
-      "midi": "varios/Evanescense - Bring Me To Life [Piano].mid"
-    },
-    {
-      "id": "kirby-dreamland-theme",
-      "title": "Kirby - Dreamland Theme",
-      "artist": "Kirby",
-      "midi": "varios/Kirby - Dreamland Theme.mid"
+      "midi": "varios/Cyndi Lauper - Time After Time.mid"
     },
     {
       "id": "korobeiniki-tetris-theme",
       "title": "Korobeiniki (Tetris Theme)",
       "artist": "Tradicional",
-      "midi": "varios/Korobeiniki (Tetris Theme).mid"
+      "midi": "varios/Tradicional - Korobeiniki (Tetris Theme).mid"
     },
     {
       "id": "nena-99-luftballons",
@@ -174,31 +150,43 @@
       "id": "pixies-where-is-my-mind",
       "title": "Pixies - Where Is My Mind?",
       "artist": "Pixies",
-      "midi": "varios/Pixies - Where is My Mind.mid"
+      "midi": "varios/Pixies - Where Is My Mind.mid"
     },
     {
       "id": "survivor-eye-of-the-tiger",
       "title": "Survivor - Eye of the Tiger",
       "artist": "Survivor",
-      "midi": "varios/Survivor - Eye of The Tiger.mid"
+      "midi": "varios/Survivor - Eye of the Tiger.mid"
     },
     {
       "id": "undertale-megalovania",
       "title": "Undertale - Megalovania",
       "artist": "Toby Fox",
-      "midi": "varios/Undertale - Megalovania.mid"
+      "midi": "varios/Toby Fox - Undertale - Megalovania.mid"
     },
     {
       "id": "keane-everybodys-changing",
       "title": "Keane - Everybody's Changing",
       "artist": "Keane",
-      "midi": "varios/keane-everybodys_changing.mid"
+      "midi": "varios/Keane - Everybody's Changing.mid"
     },
     {
       "id": "linkin-park-in-the-end",
       "title": "Linkin Park - In the End",
       "artist": "Linkin Park",
       "midi": "varios/Linkin Park - In the End.mid"
+    },
+    {
+      "id": "kate-bush-running-up-that-hill",
+      "title": "Kate Bush - Running Up That Hill",
+      "artist": "Kate Bush",
+      "midi": "varios/Kate Bush - Running Up That Hill.mid"
+    },
+    {
+      "id": "kirby-gourmet-race",
+      "title": "Kirby - Gourmet Race",
+      "artist": "Kirby",
+      "midi": "varios/Kirby - Gourmet Race.mid"
     }
   ]
 }

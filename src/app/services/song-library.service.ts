@@ -2,8 +2,10 @@ import { computed, Injectable, signal } from '@angular/core';
 import { KalimbaSize, parseTab, recommendedSize, TabParseError } from '../../core/kalimba';
 import { ImportResult, ImportSongInput, MidiImportSongInput, Song } from '../models/song';
 import { encodeMidiSource, MidiNoteData, MidiReduction, MidiSongData } from '../../core/midi';
+import { isMusicXmlFileName } from '../../core/musicxml';
 import { SettingsService } from './settings.service';
 import { MidiImportService } from './midi-import.service';
+import { MusicXmlImportService } from './musicxml-import.service';
 
 const STORAGE_KEY = 'kalimbapp.songs.v1';
 const BUILTIN_CONFIGS_KEY = 'kalimbapp.builtin-midi.v2';
@@ -24,6 +26,7 @@ interface BuiltInEntry {
   kalimba?: number;
   file?: string;
   midi?: string;
+  musicxml?: string;
 }
 
 interface BuiltInIndex {
@@ -222,6 +225,7 @@ export class SongLibraryService {
   constructor(
     private readonly settings: SettingsService,
     private readonly midiImport: MidiImportService,
+    private readonly musicXmlImport: MusicXmlImportService,
   ) {
     void this.loadBuiltIns();
   }
@@ -236,7 +240,17 @@ export class SongLibraryService {
 
     for (const file of Array.from(files)) {
       if (/\.(mid|midi)$/i.test(file.name)) {
-        errors.push(`${file.name}: usa el botón "Importar MIDI" para elegir la pista.`);
+        errors.push(`${file.name}: usa el botón "Importar" para elegir la pista.`);
+        continue;
+      }
+      if (isMusicXmlFileName(file.name)) {
+        try {
+          imported.push(await this.importMusicXmlFile(file));
+        } catch (error) {
+          errors.push(
+            `${file.name}: ${error instanceof Error ? error.message : 'error desconocido'}`,
+          );
+        }
         continue;
       }
       try {
@@ -292,6 +306,18 @@ export class SongLibraryService {
     const analysis = this.midiImport.analyze(buffer, file.name);
     return this.importMidiDraft({
       title: analysis.title,
+      bpm: analysis.bpm,
+      midiSource: encodeMidiSource(buffer),
+      midiFileName: file.name,
+    });
+  }
+
+  async importMusicXmlFile(file: File): Promise<Song> {
+    const buffer = await file.arrayBuffer();
+    const analysis = this.musicXmlImport.analyze(buffer, file.name);
+    return this.importMidiDraft({
+      title: analysis.title,
+      artist: analysis.artist,
       bpm: analysis.bpm,
       midiSource: encodeMidiSource(buffer),
       midiFileName: file.name,
@@ -449,67 +475,17 @@ export class SongLibraryService {
         throw new Error('Índice de canciones inválido');
       }
 
-      const songs = await Promise.all(
-        index.songs.map(async (entry) => {
-          const midiFile =
-            entry.midi ?? (entry.file && /\.(mid|midi)$/i.test(entry.file) ? entry.file : null);
-
-          if (midiFile) {
-            const midiResponse = await fetch(
-              `songs/${encodeURIComponent(midiFile)}?v=${cacheBust}`,
-              { cache: 'no-store' },
-            );
-            if (!midiResponse.ok) {
-              throw new Error(`No se pudo cargar ${midiFile}`);
+      const songs = (
+        await Promise.all(
+          index.songs.map(async (entry) => {
+            try {
+              return await this.loadBuiltInEntry(entry, cacheBust);
+            } catch {
+              return null;
             }
-            const buffer = await midiResponse.arrayBuffer();
-            const analysis = this.midiImport.analyze(buffer, midiFile);
-            const saved = this.builtInConfigsState()[entry.id];
-            const settings = this.settings.settings();
-
-            return {
-              id: entry.id,
-              title: entry.title ?? analysis.title,
-              artist: entry.artist,
-              bpm: saved?.bpm ?? clampBpm(analysis.bpm),
-              kalimbaSize: saved?.kalimbaSize ?? settings.kalimbaSize,
-              tabText: '',
-              builtIn: true,
-              createdAt: 0,
-              midi: saved?.midi,
-              midiSource: encodeMidiSource(buffer),
-              midiFileName: midiFile,
-            } satisfies Song;
-          }
-
-          if (!entry.file) {
-            throw new Error(`La canción ${entry.id} no tiene archivo`);
-          }
-
-          const tabResponse = await fetch(
-            `songs/${encodeURIComponent(entry.file)}?v=${cacheBust}`,
-            { cache: 'no-store' },
-          );
-          if (!tabResponse.ok) {
-            throw new Error(`No se pudo cargar ${entry.file}`);
-          }
-          const tabText = await tabResponse.text();
-          const parsed = parseTab(tabText);
-          return {
-            id: entry.id,
-            title: entry.title ?? parsed.metadata.title ?? 'Canción',
-            artist: entry.artist,
-            bpm: clampBpm(entry.bpm ?? parsed.metadata.bpm ?? this.settings.settings().defaultBpm),
-            kalimbaSize: isKalimbaSize(entry.kalimba)
-              ? entry.kalimba
-              : (parsed.metadata.kalimbaSize ?? recommendedSize(parsed) ?? 17),
-            tabText,
-            builtIn: true,
-            createdAt: 0,
-            repeat: parsed.repeat,
-          } satisfies Song;
-        }),
-      );
+          }),
+        )
+      ).filter((song): song is Song => song !== null);
 
       this.builtInState.set(songs);
       this.errorState.set(null);
@@ -522,6 +498,72 @@ export class SongLibraryService {
     } finally {
       this.readyState.set(true);
     }
+  }
+
+  private async loadBuiltInEntry(entry: BuiltInEntry, cacheBust: string): Promise<Song> {
+    const midiFile =
+      entry.midi ?? (entry.file && /\.(mid|midi)$/i.test(entry.file) ? entry.file : null);
+    const musicXmlFile =
+      entry.musicxml ?? (entry.file && isMusicXmlFileName(entry.file) ? entry.file : null);
+
+    if (midiFile || musicXmlFile) {
+      const sourceFile = midiFile ?? musicXmlFile;
+      if (!sourceFile) {
+        throw new Error(`La canción ${entry.id} no tiene archivo`);
+      }
+      const sourceResponse = await fetch(`songs/${encodeURIComponent(sourceFile)}?v=${cacheBust}`, {
+        cache: 'no-store',
+      });
+      if (!sourceResponse.ok) {
+        throw new Error(`No se pudo cargar ${sourceFile}`);
+      }
+      const buffer = await sourceResponse.arrayBuffer();
+      const analysis = midiFile
+        ? this.midiImport.analyze(buffer, sourceFile)
+        : this.musicXmlImport.analyze(buffer, sourceFile);
+      const saved = this.builtInConfigsState()[entry.id];
+      const settings = this.settings.settings();
+
+      return {
+        id: entry.id,
+        title: entry.title ?? analysis.title,
+        artist: entry.artist ?? analysis.artist,
+        bpm: saved?.bpm ?? clampBpm(analysis.bpm),
+        kalimbaSize: saved?.kalimbaSize ?? settings.kalimbaSize,
+        tabText: '',
+        builtIn: true,
+        createdAt: 0,
+        midi: saved?.midi,
+        midiSource: encodeMidiSource(buffer),
+        midiFileName: sourceFile,
+      } satisfies Song;
+    }
+
+    if (!entry.file) {
+      throw new Error(`La canción ${entry.id} no tiene archivo`);
+    }
+
+    const tabResponse = await fetch(`songs/${encodeURIComponent(entry.file)}?v=${cacheBust}`, {
+      cache: 'no-store',
+    });
+    if (!tabResponse.ok) {
+      throw new Error(`No se pudo cargar ${entry.file}`);
+    }
+    const tabText = await tabResponse.text();
+    const parsed = parseTab(tabText);
+    return {
+      id: entry.id,
+      title: entry.title ?? parsed.metadata.title ?? 'Canción',
+      artist: entry.artist,
+      bpm: clampBpm(entry.bpm ?? parsed.metadata.bpm ?? this.settings.settings().defaultBpm),
+      kalimbaSize: isKalimbaSize(entry.kalimba)
+        ? entry.kalimba
+        : (parsed.metadata.kalimbaSize ?? recommendedSize(parsed) ?? 17),
+      tabText,
+      builtIn: true,
+      createdAt: 0,
+      repeat: parsed.repeat,
+    } satisfies Song;
   }
 }
 

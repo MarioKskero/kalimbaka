@@ -7,6 +7,7 @@ import {
   resolveTab,
 } from '../../../core/kalimba';
 import { analyzeMidiNotes, DEFAULT_MIDI_REDUCTION, recommendedMidiSize } from '../../../core/midi';
+import { isMusicXmlFileName } from '../../../core/musicxml';
 import { Song } from '../../models/song';
 
 @Component({
@@ -25,6 +26,7 @@ export class SongCardComponent {
 
   readonly midi = computed(() => this.song().midi ?? null);
   readonly hasMidi = computed(() => !!this.song().midi || !!this.song().midiSource);
+  readonly isMusicXml = computed(() => isMusicXmlFileName(this.song().midiFileName ?? ''));
   readonly effectiveSize = computed(() =>
     this.song().midi ? this.song().kalimbaSize : this.selectedSize(),
   );

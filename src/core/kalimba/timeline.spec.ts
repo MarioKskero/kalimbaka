@@ -52,6 +52,22 @@ describe('buildTimeline', () => {
     expect(timeline.totalMs).toBe(6000);
   });
 
+  it('retrasa las notas tras la cuenta atrás', () => {
+    const resolved = resolveTab(parseTab('1 2'), getLayout(17));
+    const timeline = buildTimeline(resolved, {
+      bpm: 60,
+      countInBeats: 4,
+      startDelayBeats: 6,
+    });
+
+    expect(timeline.countInMs).toBe(4000);
+    expect(timeline.events[0].startBeat).toBe(6);
+    expect(timeline.events[0].startMs).toBe(10000);
+    expect(timeline.events[1].startBeat).toBe(7);
+    expect(timeline.events[1].startMs).toBe(11000);
+    expect(timeline.totalMs).toBe(12000);
+  });
+
   it('mantiene los silencios en la línea temporal', () => {
     const resolved = resolveTab(parseTab('1 - 2'), getLayout(17));
     const timeline = buildTimeline(resolved, { bpm: 120, countInBeats: 0 });

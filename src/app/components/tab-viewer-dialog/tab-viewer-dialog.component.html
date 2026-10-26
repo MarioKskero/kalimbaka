@@ -8,7 +8,9 @@
   >
     <header class="dialog__header">
       <div>
-        <p class="eyebrow">{{ isMidi() ? 'Notas MIDI' : 'Tab' }}</p>
+        <p class="eyebrow">
+          {{ isMidi() ? (isMusicXml() ? 'Notas MusicXML' : 'Notas MIDI') : 'Tab' }}
+        </p>
         <h2 id="tab-viewer-title">{{ song().title }}</h2>
         <p class="dialog__subtitle">
           {{ song().artist || 'Artista desconocido' }} · {{ song().bpm }} BPM ·
@@ -17,13 +19,18 @@
       </div>
       <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path
+            d="m6 6 12 12M18 6 6 18"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
         </svg>
       </button>
     </header>
 
     <div class="dialog__meta">
-      <span class="tag">{{ isMidi() ? 'MIDI' : 'Texto' }}</span>
+      <span class="tag">{{ isMidi() ? (isMusicXml() ? 'MusicXML' : 'MIDI') : 'Texto' }}</span>
       @if (song().midi; as midi) {
         @if (midi.trackName) {
           <span class="tag">{{ midi.trackName }}</span>
@@ -97,11 +104,7 @@
           </div>
 
           <label class="export-check">
-            <input
-              type="checkbox"
-              [checked]="includeRests()"
-              (change)="onRestsChange($event)"
-            />
+            <input type="checkbox" [checked]="includeRests()" (change)="onRestsChange($event)" />
             Incluir silencios
           </label>
         </div>
@@ -129,7 +132,8 @@
             <p class="export-notice">
               Se omitirán {{ result.stats.omittedNotes }} notas que no caben en la kalimba.
               @if (result.omittedLabels.length > 0) {
-                ({{ result.omittedLabels.slice(0, 8).join(', ') }}{{ result.omittedLabels.length > 8 ? '…' : '' }})
+                ({{ result.omittedLabels.slice(0, 8).join(', ')
+                }}{{ result.omittedLabels.length > 8 ? '…' : '' }})
               }
             </p>
           }
