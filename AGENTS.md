@@ -39,7 +39,7 @@ No uses `npm test -- --run`; el flag correcto es `--watch=false`.
 - `@tonejs/midi` 2.0.28. Es CommonJS: está declarado en `angular.json` → `allowedCommonJsDependencies`.
 - `fflate` 0.8.3 (MIT) para descomprimir `.mxl`. Solo se usa en el parser MusicXML.
 - El scaffold es zoneless/signals. Evita introducir `zone.js` sin motivo.
-- Presupuesto de estilos por componente: warning 16 kB, error 32 kB.
+- Presupuesto de estilos por componente: warning 18 kB, error 32 kB.
 - El servidor de desarrollo debe escuchar en `0.0.0.0:4300`.
 
 ## 4. Estructura
@@ -291,8 +291,9 @@ Orden:
 - **Tempo rápido**: el botón de tempo de la cabecera de juego sustituye al de colores, muestra el porcentaje respecto al BPM base (`bpm / baseBpm`) y abre un diálogo con slider 30–240 y multiplicadores 0,25×/0,5×/0,75×/1×/1,25×. Se calculan sobre el BPM base (`song.midi?.bpm ?? song.bpm`), no sobre el BPM actual. Si se abre durante la reproducción, pausa antes. Al cambiar el BPM se conserva el pulso actual; reanudar continúa desde ese punto.
 - **HUD inferior**: “Ahora” se vacía durante silencios; “Siguiente” salta rests y muestra la próxima nota real.
 - Durante la reproducción la cabecera desaparece para dejar ver la caída de notas; un botón circular flotante con chevron en la parte superior la muestra de nuevo y vuelve a ocultarse a los ~3,2 s. Durante la cuenta atrás inicial permanece visible y se pliega al terminar. El HUD (Ahora, progreso y Siguiente) vive abajo, siempre visible y semitransparente.
-- La línea de golpe del reproductor está al 2/3 de la altura (un tercio desde abajo), con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido. Los carriles y teclas solo se iluminan con pulsaciones manuales (touch o teclado), no con notas automáticas; la línea de golpe es fija y sin brillo. El círculo destino se ilumina automáticamente cuando la nota entra en él, como guía de timing.
+- La línea de golpe del reproductor está al 2/3 de la altura (un tercio desde abajo), con una kalimba dibujada debajo: cuerpo de madera, puente, tinas de distinta longitud y la central marcada en ámbar. Calibración y reproductor comparten esa base para que el offsetY siga siendo válido. Los carriles y teclas solo se iluminan con pulsaciones manuales (touch o teclado), no con notas automáticas; la línea de golpe es fija y sin brillo. El círculo destino se ilumina con un halo y un anillo brillante cuando la nota entra en él, como guía de timing.
 - Aciertos manuales: `judge.ts` compara la pulsación con la nota del carril (perfecto ±60 ms, bien ±130 ms). Solo se juzga la primera pulsación de cada `evento:carril`; el playback automático no genera efectos. `FallingNotesComponent.triggerHitEffect` dibuja un burst local y la etiqueta de precisión.
+- **Puntuación**: `src/core/kalimba/score.ts` acumula perfectos, bien y fallos por `evento:carril` (cada nota de un acorde cuenta). Un fallo se registra cuando `timeMs - startMs > goodMs` y la clave no está consumida; las pulsaciones fuera de ventana no penalizan. `netAccuracy = (perfect + good) / juzgadas`; `weightedAccuracy = (perfect×100 + good×50) / (juzgadas×100)`. No hay marcador durante la partida para no tapar el campo: el resumen aparece solo en pausa/final como pastilla lateral, y la modal se compacta para no hacer scroll en móvil. `resetHitTracking` reinicia la puntuación (inicio, reinicio, seek, cambio de tamaño); el rebobinado del loop también. Pausa y cambio de BPM la conservan. En `onFinished` se marcan los fallos restantes para cerrar el total.
 - El tamaño de nota es fijo (según el ancho/carril). `computeNoteScroll` mantiene la separación vertical mínima según la rejilla y reduce los pulsos visibles si la altura no da para el tamaño configurado; no se comprime la zona de caída.
 - La canción se reinicia al cambiar tamaño o articulación. Cambiar BPM conserva la posición musical y reanudar continúa desde el mismo punto. Las pausas de frase son fijas: una línea en blanco = 1 beat.
 - El loop de MIDI usa el ajuste de loop, no un `repeat` de canción.
@@ -302,7 +303,7 @@ Orden:
 - El teclado manual usa el mapa puro de `src/core/kalimba/keyboard.ts`, se persiste en `kalimbapp.keyboard.v1` y comparte asignaciones por nota entre tamaños. Mantén reservadas `Esc`, espacio, flechas, modificadores y `F1–F12`.
 - `PlayerSettings.noteColors` define los colores por defecto por grado (1–7); `PlayerSettings.tineColors` guarda overrides por ID de tina y permite repetir el mismo color en varias teclas. Canvas, teclas y calibración resuelven `tineColors[tine.id] ?? noteColors[grado]`. El modo colores del reproductor edita la tina tocada con una paleta táctil y sliders HSL, sin input nativo.
 - La captura de teclado usa `event.code`, ignora repetición/modificadores/modales y limpia carriles activos al perder foco; el canvas solo dibuja el feedback recibido.
-- El canvas convierte punteros de toda la columna visible en `lanePress`/`laneRelease` (multitáctil y glissando); el reproductor sintetiza la nota y une esos carriles con los del teclado en `manualLanes`. El audio y el estado viven en el reproductor, no en el canvas.
+- El canvas convierte punteros de toda la columna visible en `lanePress`/`laneRelease` (multitáctil y glissando); ambos emiten arrays de carriles. `lanesAtX` en `geometry.ts` define una zona puente estrecha en el hueco entre teclas adyacentes. El reproductor pasa `resolveLanes` al canvas: el puente solo dispara ambas si pertenecen al mismo acorde (`selectBridgeLanes`); en el resto de casos se conserva la tecla que coincide o la más cercana. Así el canvas mantiene exactamente los carriles que suenan, también al deslizar el dedo. El canvas lleva un recuento por puntero para no duplicar pulsaciones si dos dedos comparten carril. El reproductor sintetiza el grupo de notas en una sola llamada de audio, registra un acierto por carril y une esos carriles con los del teclado en `manualLanes`. El audio y el estado viven en el reproductor, no en el canvas.
 - No metas lógica de negocio en el canvas; solo dibujo/reloj.
 
 ## 12. Calibración y almacenamiento
@@ -353,7 +354,9 @@ Cubre como mínimo:
 - layouts 8/17/21;
 - timeline (grid, pausas de frase);
 - scroll de notas (tamaño fijo y pulsos visibles según altura);
+- zona puente entre carriles adyacentes (`lanesAtX`) y selección solo en acordes (`selectBridgeLanes`);
 - seek;
+- puntuación (aciertos, fallos, acierto neto y precisión ponderada);
 - importación MIDI y recorte de silencio;
 - mapeo exacto/octava/snap;
 - reducción y eliminación de acordes;

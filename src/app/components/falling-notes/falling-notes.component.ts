@@ -18,6 +18,7 @@ import {
   computeNoteScroll,
   HitRating,
   KalimbaLayout,
+  lanesAtX,
   NOTE_COLORS,
   PLAYFIELD_HIT_LINE_RATIO,
   noteColor,
@@ -88,6 +89,7 @@ interface StaticRenderCache {
 }
 
 const HIT_EFFECT_MS = 520;
+const DEFAULT_LANE_RESOLVER = (lanes: readonly number[]): readonly number[] => lanes;
 
 // El canvas se dibuja a un máximo de 2x: en pantallas con DPR 3 el coste de
 // relleno se triplica sin una mejora visual apreciable en las notas.
@@ -145,16 +147,18 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
   readonly manualLanes = input<readonly number[]>([]);
   readonly noteColors = input<readonly string[]>(NOTE_COLORS);
   readonly tineColors = input<Readonly<Record<string, string>>>({});
+  readonly resolveLanes =
+    input<(lanes: readonly number[]) => readonly number[]>(DEFAULT_LANE_RESOLVER);
 
   readonly tick = output<PlaybackTick>();
   readonly beat = output<BeatTick>();
   readonly noteHit = output<TimelineEvent>();
   readonly finished = output<void>();
-  readonly lanePress = output<number>();
-  readonly laneRelease = output<number>();
+  readonly lanePress = output<readonly number[]>();
+  readonly laneRelease = output<readonly number[]>();
 
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
-  private readonly pointerLanes = new Map<number, number>();
+  private readonly pointerLanes = new Map<number, readonly number[]>();
   private readonly activePointers = new Set<number>();
   private readonly destroyRef = inject(DestroyRef);
 
@@ -352,14 +356,13 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     if (!this.isInTouchArea(point.y, geometry)) {
       return;
     }
-    const laneIndex = this.laneAt(point.x, geometry);
-    if (laneIndex === null) {
+    const laneIndexes = this.resolveLanes()(lanesAtX(geometry, point.x));
+    if (laneIndexes.length === 0) {
       return;
     }
     event.preventDefault();
     this.activePointers.add(event.pointerId);
-    this.pointerLanes.set(event.pointerId, laneIndex);
-    this.lanePress.emit(laneIndex);
+    this.updatePointerLanes(event.pointerId, laneIndexes);
     try {
       (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     } catch {
@@ -371,19 +374,15 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     if (!this.activePointers.has(event.pointerId)) {
       return;
     }
-    const current = this.pointerLanes.get(event.pointerId);
+    const current = this.pointerLanes.get(event.pointerId) ?? [];
     const point = this.localPoint(event);
     const geometry = this.currentGeometry();
     const inPlayfield = this.isInTouchArea(point.y, geometry);
-    const laneIndex = inPlayfield ? this.laneAt(point.x, geometry) : null;
-    if (laneIndex === current) {
+    const laneIndexes = this.resolveLanes()(inPlayfield ? lanesAtX(geometry, point.x) : []);
+    if (this.sameLanes(current, laneIndexes)) {
       return;
     }
-    this.releasePointer(event.pointerId);
-    if (laneIndex !== null) {
-      this.pointerLanes.set(event.pointerId, laneIndex);
-      this.lanePress.emit(laneIndex);
-    }
+    this.updatePointerLanes(event.pointerId, laneIndexes);
   }
 
   onPointerUp(event: PointerEvent): void {
@@ -865,6 +864,7 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       }
       const color = this.laneColors[index] ?? noteColor(tine.degree);
       const pulse = active ? 0.5 + 0.5 * Math.sin(timeMs / 90) : 0;
+      const targetPulse = 0.5 + 0.5 * Math.sin(timeMs / 80);
       const targetRadius = targetRadiusFor(lane.width);
 
       if (active) {
@@ -902,30 +902,56 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
       }
 
       if (target > 0) {
-        // Halo de proximidad: círculo translúcido modulado por `target`.
-        ctx.globalAlpha = target;
-        ctx.fillStyle = this.alpha(color, 0.2);
+        // Columna iluminada alrededor de la línea de golpe.
+        const laneGlow = ctx.createLinearGradient(
+          0,
+          geometry.hitLineY - 90,
+          0,
+          geometry.hitLineY + 30,
+        );
+        laneGlow.addColorStop(0, this.alpha(color, 0));
+        laneGlow.addColorStop(0.65, this.alpha(color, 0.08 + target * 0.16));
+        laneGlow.addColorStop(1, this.alpha(color, 0));
+        ctx.fillStyle = laneGlow;
+        ctx.fillRect(lane.x - lane.width * 0.5, geometry.hitLineY - 90, lane.width, 120);
+
+        // Halo aditivo con glow: se nota más cuanto más cerca está la nota.
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.shadowColor = this.alpha(color, 0.95);
+        ctx.shadowBlur = 12 + target * 26;
+        ctx.fillStyle = this.alpha(color, (0.2 + target * 0.22) * (0.75 + targetPulse * 0.25));
         ctx.beginPath();
-        ctx.arc(lane.x, geometry.hitLineY, targetRadius * 2.2, 0, Math.PI * 2);
+        ctx.arc(lane.x, geometry.hitLineY, targetRadius * (2 + target * 0.45), 0, Math.PI * 2);
         ctx.fill();
-        ctx.globalAlpha = 1;
+        ctx.restore();
       }
 
       // Círculo de destino con estilo activo/proximidad (tapa el base).
       ctx.beginPath();
       ctx.arc(lane.x, geometry.hitLineY, targetRadius, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(3, 6, 13, 0.72)';
+      ctx.fillStyle = target > 0 ? this.alpha(color, 0.12 + target * 0.22) : 'rgba(3, 6, 13, 0.72)';
       ctx.fill();
-      ctx.lineWidth = active ? 2.5 : 1.5 + target * 1.5;
+      ctx.save();
+      if (target > 0) {
+        ctx.shadowColor = this.alpha(color, 0.9);
+        ctx.shadowBlur = 10 + target * 16;
+      }
+      ctx.lineWidth = active ? 2.5 : 1.5 + target * 2;
       ctx.strokeStyle = this.alpha(color, active ? 1 : 0.55 + target * 0.45);
       ctx.stroke();
+      ctx.restore();
 
       if (target > 0) {
+        ctx.save();
+        ctx.shadowColor = this.alpha(color, 0.9);
+        ctx.shadowBlur = 8 + target * 16;
         ctx.beginPath();
         ctx.arc(lane.x, geometry.hitLineY, targetRadius + 1.5 + (1 - target) * 3, 0, Math.PI * 2);
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = `rgba(248, 250, 252, ${0.18 + target * 0.62})`;
+        ctx.lineWidth = 1.5 + target * 2;
+        ctx.strokeStyle = `rgba(248, 250, 252, ${0.3 + target * 0.6})`;
         ctx.stroke();
+        ctx.restore();
       }
 
       if (active) {
@@ -1574,31 +1600,56 @@ export class FallingNotesComponent implements AfterViewInit, OnDestroy {
     return y >= geometry.tineTopY && y <= this.viewport.height;
   }
 
-  private laneAt(x: number, geometry: PlayfieldGeometry): number | null {
-    let best: number | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const lane of geometry.lanes) {
-      const distance = Math.abs(x - lane.x);
-      if (distance < bestDistance) {
-        best = lane.laneIndex;
-        bestDistance = distance;
+  private updatePointerLanes(pointerId: number, next: readonly number[]): void {
+    const previous = this.pointerLanes.get(pointerId) ?? [];
+    const added = next.filter((lane) => !previous.includes(lane));
+    const removed = previous.filter((lane) => !next.includes(lane));
+
+    if (next.length === 0) {
+      this.pointerLanes.delete(pointerId);
+    } else {
+      this.pointerLanes.set(pointerId, next);
+    }
+
+    const pressed = added.filter((lane) => !this.laneHeldByOthers(lane, pointerId));
+    const released = removed.filter((lane) => !this.laneHeldByOthers(lane, pointerId));
+    if (released.length > 0) {
+      this.laneRelease.emit(released);
+    }
+    if (pressed.length > 0) {
+      this.lanePress.emit(pressed);
+    }
+  }
+
+  private laneHeldByOthers(lane: number, pointerId: number): boolean {
+    for (const [otherPointerId, lanes] of this.pointerLanes) {
+      if (otherPointerId !== pointerId && lanes.includes(lane)) {
+        return true;
       }
     }
-    return bestDistance <= geometry.spacing * 0.55 ? best : null;
+    return false;
+  }
+
+  private sameLanes(a: readonly number[], b: readonly number[]): boolean {
+    return a.length === b.length && a.every((lane) => b.includes(lane));
   }
 
   private releasePointer(pointerId: number): void {
-    const laneIndex = this.pointerLanes.get(pointerId);
-    if (laneIndex === undefined) {
+    if (!this.pointerLanes.has(pointerId)) {
       return;
     }
-    this.pointerLanes.delete(pointerId);
-    this.laneRelease.emit(laneIndex);
+    this.updatePointerLanes(pointerId, []);
   }
 
   private clearPointers(): void {
-    for (const laneIndex of this.pointerLanes.values()) {
-      this.laneRelease.emit(laneIndex);
+    const held = new Set<number>();
+    for (const lanes of this.pointerLanes.values()) {
+      for (const lane of lanes) {
+        held.add(lane);
+      }
+    }
+    if (held.size > 0) {
+      this.laneRelease.emit([...held]);
     }
     this.pointerLanes.clear();
     this.activePointers.clear();

@@ -1,4 +1,4 @@
-import { Timeline } from './types';
+import { Timeline, TimelineEvent } from './types';
 
 export type HitRating = 'perfect' | 'good';
 
@@ -55,4 +55,39 @@ export function findLaneHit(
   }
 
   return best;
+}
+
+/**
+ * Decide qué carriles debe disparar una pulsación táctil. En la zona puente
+ * solo se conservan las dos teclas si ambas pertenecen al mismo acorde; en
+ * cualquier otro caso se toca únicamente la tecla más cercana o la que
+ * realmente coincide con una nota.
+ */
+export function selectBridgeLanes(
+  lanes: readonly number[],
+  hits: readonly (LaneHit | null)[],
+  events: readonly TimelineEvent[],
+  chordEnabled: boolean,
+): number[] {
+  if (lanes.length <= 1) {
+    return [...lanes];
+  }
+
+  const primary = lanes[0];
+  if (!chordEnabled) {
+    return [primary];
+  }
+
+  const firstHit = hits.find((hit): hit is LaneHit => hit !== null) ?? null;
+  if (!firstHit) {
+    return [primary];
+  }
+
+  const sameEvent = hits.every((hit) => hit !== null && hit.eventIndex === firstHit.eventIndex);
+  const event = events[firstHit.eventIndex];
+  if (sameEvent && event?.isChord) {
+    return [...lanes];
+  }
+
+  return [firstHit.lane];
 }

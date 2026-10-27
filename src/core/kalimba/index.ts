@@ -7,5 +7,6 @@ export * from './timeline';
 export * from './geometry';
 export * from './seek';
 export * from './judge';
+export * from './score';
 export * from './colors';
 export * from './keyboard';

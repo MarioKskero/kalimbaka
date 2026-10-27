@@ -20,6 +20,8 @@ export interface NoteScroll {
 }
 
 export const NOTE_SCROLL_GAP_PX = 3;
+export const LANE_HIT_RADIUS_RATIO = 0.55;
+export const LANE_BRIDGE_RATIO = 0.1;
 
 export const DEFAULT_CALIBRATION: Calibration = {
   scale: 0.9,
@@ -90,4 +92,45 @@ export function computeGeometry(
     tineTopY,
     tineBottomY: hitLineY,
   };
+}
+
+/**
+ * Devuelve los carriles tocados por una coordenada X, con la tecla más cercana
+ * primero. Si el punto cae en la zona central entre dos teclas adyacentes
+ * devuelve ambas; si cae claramente sobre una tecla devuelve solo esa.
+ */
+export function lanesAtX(
+  geometry: PlayfieldGeometry,
+  x: number,
+  bridgeRatio: number = LANE_BRIDGE_RATIO,
+): number[] {
+  let nearest = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const lane of geometry.lanes) {
+    const distance = Math.abs(x - lane.x);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      nearest = lane.laneIndex;
+    }
+  }
+
+  if (nearest < 0 || bestDistance > geometry.spacing * LANE_HIT_RADIUS_RATIO) {
+    return [];
+  }
+
+  const lane = geometry.lanes[nearest];
+  const ratio = Math.max(0, bridgeRatio);
+  for (const neighborIndex of [nearest - 1, nearest + 1]) {
+    const neighbor = geometry.lanes[neighborIndex];
+    if (!neighbor) {
+      continue;
+    }
+    const midpoint = (lane.x + neighbor.x) / 2;
+    if (Math.abs(x - midpoint) <= geometry.spacing * ratio) {
+      return [nearest, neighborIndex];
+    }
+  }
+
+  return [nearest];
 }

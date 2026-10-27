@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findLaneHit, hitNoteKey, LaneHit } from './judge';
+import { findLaneHit, hitNoteKey, LaneHit, selectBridgeLanes } from './judge';
 import { getLayout } from './layouts';
 import { parseTab } from './tab-parser';
 import { resolveTab } from './resolve';
@@ -76,5 +76,50 @@ describe('findLaneHit', () => {
     for (const lane of event.lanes) {
       expect(findLaneHit(timeline, lane, event.startMs)?.eventIndex).toBe(event.index);
     }
+  });
+});
+
+describe('selectBridgeLanes', () => {
+  const hit = (lane: number, eventIndex = 0): LaneHit => ({
+    lane,
+    eventIndex,
+    deltaMs: 0,
+    rating: 'perfect',
+  });
+
+  it('deja una sola tecla si no se está jugando', () => {
+    const timeline = timelineFor('(1 3)');
+
+    expect(selectBridgeLanes([8, 9], [null, null], timeline.events, false)).toEqual([8]);
+  });
+
+  it('dispara las dos teclas si pertenecen al mismo acorde', () => {
+    const timeline = timelineFor('(1 3)');
+
+    expect(selectBridgeLanes([8, 9], [hit(8), hit(9)], timeline.events, true)).toEqual([8, 9]);
+  });
+
+  it('dispara solo la tecla que suena si la otra no pertenece', () => {
+    const timeline = timelineFor('1');
+
+    expect(selectBridgeLanes([8, 9], [hit(8), hit(9)], timeline.events, true)).toEqual([8]);
+  });
+
+  it('elige la tecla que coincide aunque no sea la primaria', () => {
+    const timeline = timelineFor('1');
+
+    expect(selectBridgeLanes([8, 9], [null, hit(9)], timeline.events, true)).toEqual([9]);
+  });
+
+  it('usa la tecla primaria si ninguna coincide', () => {
+    const timeline = timelineFor('(1 3)');
+
+    expect(selectBridgeLanes([8, 9], [null, null], timeline.events, true)).toEqual([8]);
+  });
+
+  it('con eventos distintos no mezcla dos notas', () => {
+    const timeline = timelineFor('1 3');
+
+    expect(selectBridgeLanes([8, 9], [hit(8, 0), hit(9, 1)], timeline.events, true)).toEqual([8]);
   });
 });

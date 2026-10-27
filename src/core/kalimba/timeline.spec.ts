@@ -3,6 +3,8 @@ import {
   computeGeometry,
   computeNoteScroll,
   DEFAULT_CALIBRATION,
+  LANE_BRIDGE_RATIO,
+  lanesAtX,
   NOTE_SCROLL_GAP_PX,
 } from './geometry';
 import { getLayout } from './layouts';
@@ -234,6 +236,72 @@ describe('computeGeometry', () => {
     expect(geometry.lanes[4].x).toBeCloseTo(500);
     expect(geometry.lanes[0].x).toBeLessThan(500);
     expect(geometry.lanes[7].x).toBeGreaterThan(500);
+  });
+});
+
+describe('lanesAtX', () => {
+  const geometry = computeGeometry(
+    getLayout(17),
+    { width: 1000, height: 600 },
+    DEFAULT_CALIBRATION,
+  );
+
+  it('devuelve una sola tecla al pulsar sobre su centro', () => {
+    expect(lanesAtX(geometry, geometry.lanes[8].x)).toEqual([8]);
+  });
+
+  it('devuelve las dos teclas al pulsar en el hueco central', () => {
+    const left = geometry.lanes[8];
+    const right = geometry.lanes[9];
+    const midpoint = (left.x + right.x) / 2;
+
+    expect(lanesAtX(geometry, midpoint).sort()).toEqual([8, 9]);
+  });
+
+  it('devuelve las dos teclas en los bordes de la zona puente', () => {
+    const left = geometry.lanes[8];
+    const right = geometry.lanes[9];
+    const midpoint = (left.x + right.x) / 2;
+    const offset = geometry.spacing * LANE_BRIDGE_RATIO;
+
+    expect(lanesAtX(geometry, midpoint - offset)).toEqual([8, 9]);
+    expect(lanesAtX(geometry, midpoint + offset)).toEqual([9, 8]);
+  });
+
+  it('devuelve primero la tecla más cercana', () => {
+    const left = geometry.lanes[8];
+    const right = geometry.lanes[9];
+    const midpoint = (left.x + right.x) / 2;
+    const slightRight = geometry.spacing * 0.02;
+
+    expect(lanesAtX(geometry, midpoint + slightRight)).toEqual([9, 8]);
+  });
+
+  it('vuelve a una sola tecla fuera de la zona puente', () => {
+    const left = geometry.lanes[8];
+    const right = geometry.lanes[9];
+    const midpoint = (left.x + right.x) / 2;
+    const outside = geometry.spacing * (LANE_BRIDGE_RATIO + 0.05);
+
+    expect(lanesAtX(geometry, midpoint + outside)).toEqual([9]);
+  });
+
+  it('no devuelve nada fuera del área táctil', () => {
+    const last = geometry.lanes[geometry.lanes.length - 1];
+
+    expect(lanesAtX(geometry, last.x + geometry.spacing)).toEqual([]);
+  });
+
+  it('funciona con calibración escalada y desplazada', () => {
+    const calibrated = computeGeometry(
+      getLayout(17),
+      { width: 1000, height: 600 },
+      { scale: 0.5, offsetX: 0.1, offsetY: 0 },
+    );
+    const left = calibrated.lanes[8];
+    const right = calibrated.lanes[9];
+
+    expect(lanesAtX(calibrated, (left.x + right.x) / 2).sort()).toEqual([8, 9]);
   });
 });
 

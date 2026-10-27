@@ -199,6 +199,48 @@
       "title": "Metallica - One",
       "artist": "Metallica",
       "midi": "varios/metallica_one.mid"
+    },
+    {
+      "id": "blind-guardian-the-bards-song",
+      "title": "Blind Guardian - The Bard's Song",
+      "artist": "Blind Guardian",
+      "midi": "varios/blind_guardian_the_bards_song.mid"
+    },
+    {
+      "id": "street-fighter-guile-theme-metal",
+      "title": "Street Fighter - Guile Theme (Charlie Parra Metal Cover)",
+      "artist": "Yoko Shimomura",
+      "midi": "varios/street_fighter_guile_theme_metal.mid"
+    },
+    {
+      "id": "spirited-away-one-summers-day",
+      "title": "Spirited Away - One Summer's Day",
+      "artist": "Joe Hisaishi",
+      "midi": "varios/joe_hisaishi_spirited_away_one_summers_day.mid"
+    },
+    {
+      "id": "mecano-hijo-de-la-luna",
+      "title": "Mecano - Hijo de la luna",
+      "artist": "Mecano",
+      "midi": "varios/mecano_hijo_de_la_luna.mid"
+    },
+    {
+      "id": "my-neighbor-totoro-path-of-the-wind",
+      "title": "My Neighbor Totoro - Path of the Wind",
+      "artist": "Joe Hisaishi",
+      "midi": "varios/my_neighbor_totoro_path_of_the_wind.mid"
+    },
+    {
+      "id": "street-fighter-ryus-theme",
+      "title": "Street Fighter - Ryu's Theme",
+      "artist": "Yoko Shimomura",
+      "midi": "varios/street_fighter_ryus_theme.mid"
+    },
+    {
+      "id": "pantera-cowboys-from-hell",
+      "title": "Pantera - Cowboys From Hell",
+      "artist": "Pantera",
+      "midi": "varios/pantera_cowboys_from_hell.mid"
     }
   ]
 }

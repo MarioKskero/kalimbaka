@@ -22,6 +22,7 @@
         [manualLanes]="manualLanes()"
         [noteColors]="noteColors()"
         [tineColors]="tineColors()"
+        [resolveLanes]="resolveTouchLanes"
         (tick)="onTick($event)"
         (beat)="onBeat($event)"
         (noteHit)="onNoteHit($event)"
@@ -282,6 +283,7 @@
         <div class="player-overlay">
           <section
             class="player-modal"
+            [class.player-modal--summary]="!showSettings()"
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-title"
@@ -560,30 +562,56 @@
                 </footer>
               }
             } @else {
-              <div class="player-modal__hero">
-                <p class="eyebrow">
-                  @if (isFinished()) {
-                    Fin de la canción
-                  } @else if (isPaused()) {
-                    En pausa
-                  } @else {
-                    Preparado
-                  }
-                </p>
-                <h2 id="modal-title">{{ pauseTitle() }}</h2>
-                <p class="player-modal__song">
-                  {{ song.title }}
-                  @if (song.artist) {
-                    · {{ song.artist }}
-                  }
-                </p>
+              <div class="player-modal__hero player-modal__hero--summary">
+                <div class="player-modal__summary">
+                  <div class="player-modal__summary-main">
+                    <p class="eyebrow">
+                      @if (isFinished()) {
+                        Fin de la canción
+                      } @else if (isPaused()) {
+                        En pausa
+                      } @else {
+                        Preparado
+                      }
+                    </p>
+                    <h2 id="modal-title">{{ pauseTitle() }}</h2>
+                    <p class="player-modal__song">
+                      {{ song.title }}
+                      @if (song.artist) {
+                        · {{ song.artist }}
+                      }
+                    </p>
 
-                <div class="player-modal__stats">
-                  <span class="tag">{{ size() }} teclas</span>
-                  <span class="tag">{{ bpm() }} BPM</span>
-                  <span class="tag">{{ totalNotes() }} notas</span>
-                  @if (unsupportedCount() > 0) {
-                    <span class="tag tag--warning">{{ unsupportedCount() }} no caben</span>
+                    <div class="player-modal__stats">
+                      <span class="tag">{{ size() }} teclas</span>
+                      <span class="tag">{{ bpm() }} BPM</span>
+                      <span class="tag">{{ totalNotes() }} notas</span>
+                      @if (unsupportedCount() > 0) {
+                        <span class="tag tag--warning">{{ unsupportedCount() }} no caben</span>
+                      }
+                    </div>
+                  </div>
+
+                  @if (hasScore()) {
+                    <aside class="score-pill" aria-label="Resumen de puntuación">
+                      <div class="score-pill__net">
+                        <span class="hud-label">Acierto</span>
+                        <strong>{{ netAccuracyLabel() }}</strong>
+                      </div>
+                      <div class="score-pill__row">
+                        <span class="hud-label">Precisión</span>
+                        <strong>{{ weightedAccuracyLabel() }}</strong>
+                      </div>
+                      <div class="score-pill__counts">
+                        <span class="score-pill__perfect">P {{ scoreCounts().perfect }}</span>
+                        <span class="score-pill__good">B {{ scoreCounts().good }}</span>
+                        <span class="score-pill__miss">F {{ scoreCounts().missed }}</span>
+                      </div>
+                      <div class="score-pill__row">
+                        <span class="hud-label">Notas</span>
+                        <strong>{{ scoreSummary().judged }}/{{ scoreSummary().total }}</strong>
+                      </div>
+                    </aside>
                   }
                 </div>
 
@@ -649,12 +677,18 @@
                       Reiniciar
                     </button>
                   }
+                </div>
+
+                <div class="player-modal__stats">
                   <button
-                    class="btn"
+                    class="icon-btn"
                     type="button"
-                    [class.btn--soft]="noteSound()"
-                    [class.btn--ghost]="!noteSound()"
+                    [class.icon-btn--active]="noteSound()"
                     [attr.aria-pressed]="noteSound()"
+                    [attr.aria-label]="
+                      noteSound() ? 'Desactivar sonido de notas' : 'Activar sonido de notas'
+                    "
+                    [title]="noteSound() ? 'Sonido de notas: on' : 'Sonido de notas: off'"
                     (click)="toggleNoteSound()"
                   >
                     @if (noteSound()) {
@@ -688,26 +722,102 @@
                         />
                       </svg>
                     }
-                    {{ noteSound() ? 'Sonido on' : 'Sonido off' }}
                   </button>
                   @if (song.midiSource) {
-                    <button class="btn btn--ghost" type="button" (click)="openMidiConfig()">
-                      {{ midiConfigLabel() }}
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      [attr.aria-label]="midiConfigLabel()"
+                      [title]="midiConfigLabel()"
+                      (click)="openMidiConfig()"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path
+                          d="M4 7h8M16 7h4M4 17h4M12 17h8"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                        />
+                        <circle cx="14" cy="7" r="2" stroke="currentColor" stroke-width="1.8" />
+                        <circle cx="10" cy="17" r="2" stroke="currentColor" stroke-width="1.8" />
+                      </svg>
                     </button>
                   }
                   @if (fullscreen.supported && !fullscreen.isActive()) {
-                    <button class="btn btn--ghost" type="button" (click)="enterFullscreen()">
-                      Pantalla completa
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-label="Pantalla completa"
+                      title="Pantalla completa"
+                      (click)="enterFullscreen()"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path
+                          d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
                     </button>
                   }
-                  <button class="btn btn--ghost" type="button" (click)="openColorEdit()">
-                    Colores
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    aria-label="Editar colores"
+                    title="Editar colores"
+                    (click)="openColorEdit()"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M12 4a8 8 0 1 0 0 16h1a2 2 0 0 0 0-4h-1a2 2 0 0 1 0-4h3a4 4 0 0 0 0-8h-3Z"
+                        stroke="currentColor"
+                        stroke-width="1.7"
+                        stroke-linejoin="round"
+                      />
+                      <circle cx="8" cy="9" r="1.2" fill="currentColor" />
+                      <circle cx="7.5" cy="13.5" r="1.2" fill="currentColor" />
+                      <circle cx="16" cy="8" r="1.2" fill="currentColor" />
+                    </svg>
                   </button>
-                  <button class="btn btn--ghost" type="button" (click)="openSettings()">
-                    Ajustes
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    aria-label="Ajustes"
+                    title="Ajustes"
+                    (click)="openSettings()"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                      />
+                      <path
+                        d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.9 1.9-.06-.06A1.7 1.7 0 0 0 16 19.4a1.7 1.7 0 0 0-1 .95l-.03.08h-2.7l-.03-.08a1.7 1.7 0 0 0-1-.95 1.7 1.7 0 0 0-1.88.34l-.06.06-1.9-1.9.06-.06A1.7 1.7 0 0 0 7.8 16a1.7 1.7 0 0 0-.95-1l-.08-.03v-2.7l.08-.03a1.7 1.7 0 0 0 .95-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.9-1.9.06.06A1.7 1.7 0 0 0 11 7.8a1.7 1.7 0 0 0 1-.95l.03-.08h2.7l.03.08a1.7 1.7 0 0 0 1 .95 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.9 1.9-.06.06A1.7 1.7 0 0 0 19.2 11c.15.4.5.8.95 1l.08.03v2.7l-.08.03c-.45.2-.8.6-.95 1Z"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
                   </button>
-                  <button class="btn btn--ghost" type="button" (click)="openCalibration()">
-                    Calibrar
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    aria-label="Calibrar pantalla"
+                    title="Calibrar pantalla"
+                    (click)="openCalibration()"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="1.7" />
+                      <path
+                        d="M12 2v4M12 18v4M2 12h4M18 12h4"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                      />
+                    </svg>
                   </button>
                 </div>
 

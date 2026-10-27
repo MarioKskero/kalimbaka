@@ -23,11 +23,20 @@ import {
   buildTimeline,
   buildKeyboardBindings,
   computeSeekTarget,
+  countScoreableNotes,
+  createScore,
   findLaneHit,
+  findMissedHitKeys,
   hitNoteKey,
   isKeyboardCodeAllowed,
   keyboardLabel,
   NOTE_COLORS,
+  recordHit,
+  recordMisses,
+  ScoreCounts,
+  selectBridgeLanes,
+  ScoreSummary,
+  summarizeScore,
   TimelineEvent,
 } from '../../../core/kalimba';
 import {
@@ -63,6 +72,10 @@ function clampBpm(value: number): number {
 
 function formatMultiplier(value: number): string {
   return value === 1 ? '1×' : `${String(value).replace('.', ',')}×`;
+}
+
+function formatAccuracy(value: number | null): string {
+  return value === null ? '—' : `${Math.round(value)}%`;
 }
 
 @Component({
@@ -202,6 +215,7 @@ export class PlayerPage implements OnDestroy {
   private colorSheetTimer: ReturnType<typeof setTimeout> | null = null;
   private topRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly consumedHits = new Set<string>();
+  private seeking = false;
   private lastTickTimeMs = 0;
   private pausedBeatPosition: number | null = null;
   private retimeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -270,6 +284,19 @@ export class PlayerPage implements OnDestroy {
     }
     return this.parsed()?.events.filter((event) => !event.isRest).length ?? 0;
   });
+  readonly scoreCounts = signal<ScoreCounts>(createScore());
+  readonly scoreTotal = computed(() => {
+    const timeline = this.timeline();
+    return timeline ? countScoreableNotes(timeline) : 0;
+  });
+  readonly scoreSummary = computed<ScoreSummary>(() =>
+    summarizeScore(this.scoreCounts(), this.scoreTotal()),
+  );
+  readonly hasScore = computed(() => this.scoreSummary().judged > 0);
+  readonly netAccuracyLabel = computed(() => formatAccuracy(this.scoreSummary().netAccuracy));
+  readonly weightedAccuracyLabel = computed(() =>
+    formatAccuracy(this.scoreSummary().weightedAccuracy),
+  );
   readonly gapPercent = computed(() => Math.round(this.noteGap() * 100));
   readonly noteColors = computed(() => this.settingsService.settings().noteColors);
   readonly tineColors = computed(() => this.settingsService.settings().tineColors);
@@ -532,24 +559,57 @@ export class PlayerPage implements OnDestroy {
     this.pressedLanes.update((lanes) => lanes.filter((lane) => lane !== binding.laneIndex));
   }
 
-  onLanePress(lane: number): void {
-    const tine = this.layout().tines[lane];
-    if (!tine) {
+  onLanePress(lanes: readonly number[]): void {
+    const layout = this.layout();
+    const notes: Array<{ lane: number; midi: number; tineId: string }> = [];
+    for (const lane of lanes) {
+      const tine = layout.tines[lane];
+      if (!tine) {
+        continue;
+      }
+      notes.push({ lane, midi: tine.midi, tineId: tine.id });
+    }
+    if (notes.length === 0) {
       return;
     }
-    this.touchLanes.update((lanes) => (lanes.includes(lane) ? lanes : [...lanes, lane]));
+    this.touchLanes.update((current) => {
+      const next = new Set(current);
+      for (const note of notes) {
+        next.add(note.lane);
+      }
+      return [...next];
+    });
     if (this.colorEdit()) {
-      this.openColorSheet(tine.id);
+      this.openColorSheet(notes[0].tineId);
       setTimeout(() => this.touchLanes.set([]), 250);
       return;
     }
-    this.registerManualHit(lane);
-    void this.audio.resume().then(() => this.audio.playNotes([tine.midi], 900));
+    for (const note of notes) {
+      this.registerManualHit(note.lane);
+    }
+    const midis = notes.map((note) => note.midi);
+    void this.audio.resume().then(() => this.audio.playNotes(midis, 900));
   }
 
-  onLaneRelease(lane: number): void {
-    this.touchLanes.update((lanes) => lanes.filter((item) => item !== lane));
+  onLaneRelease(lanes: readonly number[]): void {
+    const released = new Set(lanes);
+    this.touchLanes.update((current) => current.filter((lane) => !released.has(lane)));
   }
+
+  readonly resolveTouchLanes = (lanes: readonly number[]): readonly number[] => {
+    if (lanes.length <= 1) {
+      return lanes;
+    }
+    const timeline = this.timeline();
+    const playfield = this.playfield();
+    const hits =
+      timeline && playfield
+        ? lanes.map((lane) =>
+            findLaneHit(timeline, lane, playfield.currentTimeMs, this.consumedHits),
+          )
+        : [];
+    return selectBridgeLanes(lanes, hits, timeline?.events ?? [], this.isPlaying());
+  };
 
   openColorEdit(): void {
     if (this.isPlaying()) {
@@ -1119,8 +1179,13 @@ export class PlayerPage implements OnDestroy {
     const musicalTotal = Math.max(0, timeline.totalMs - timeline.countInMs);
 
     this.audio.stopAllNotes();
-    playfield.seekTo(seek.absoluteMs);
     this.resetHitTracking();
+    this.seeking = true;
+    try {
+      playfield.seekTo(seek.absoluteMs);
+    } finally {
+      this.seeking = false;
+    }
     this.pausedBeatPosition =
       !wasPlaying && timeline.beatMs > 0 ? seek.absoluteMs / timeline.beatMs : null;
 
@@ -1162,12 +1227,17 @@ export class PlayerPage implements OnDestroy {
   }
 
   onTick(tick: PlaybackTick): void {
-    if (tick.timeMs < this.lastTickTimeMs) {
+    const rewound = tick.timeMs < this.lastTickTimeMs;
+    if (rewound) {
       this.consumedHits.clear();
+      this.resetScore();
       this.playfield()?.clearHitEffects();
     }
     this.lastTickTimeMs = tick.timeMs;
     this.tickState.set(tick);
+    if (!rewound && !this.seeking && this.isPlaying()) {
+      this.collectMisses(tick.timeMs);
+    }
   }
 
   onBeat(beat: BeatTick): void {
@@ -1187,6 +1257,7 @@ export class PlayerPage implements OnDestroy {
     this.cancelResumeCountdown();
     this.cancelRetime();
     this.pausedBeatPosition = null;
+    this.collectMisses(Number.POSITIVE_INFINITY);
     this.audio.stopAllNotes();
     this.isPlaying.set(false);
     this.isPaused.set(false);
@@ -1243,6 +1314,7 @@ export class PlayerPage implements OnDestroy {
     const timeMs = playfield.currentTimeMs;
     if (timeMs < this.lastTickTimeMs) {
       this.consumedHits.clear();
+      this.resetScore();
       playfield.clearHitEffects();
       this.lastTickTimeMs = timeMs;
     }
@@ -1251,12 +1323,33 @@ export class PlayerPage implements OnDestroy {
       return;
     }
     this.consumedHits.add(hitNoteKey(hit.eventIndex, lane));
+    this.scoreCounts.update((counts) => recordHit(counts, hit.rating));
     playfield.triggerHitEffect(lane, hit.rating);
+  }
+
+  private collectMisses(timeMs: number): void {
+    const timeline = this.timeline();
+    if (!timeline) {
+      return;
+    }
+    const missed = findMissedHitKeys(timeline, timeMs, this.consumedHits);
+    if (missed.length === 0) {
+      return;
+    }
+    for (const key of missed) {
+      this.consumedHits.add(key);
+    }
+    this.scoreCounts.update((counts) => recordMisses(counts, missed.length));
+  }
+
+  private resetScore(): void {
+    this.scoreCounts.set(createScore());
   }
 
   private resetHitTracking(): void {
     this.consumedHits.clear();
     this.lastTickTimeMs = 0;
+    this.resetScore();
     this.playfield()?.clearHitEffects();
   }
 

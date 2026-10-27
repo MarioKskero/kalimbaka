@@ -374,8 +374,9 @@ La app informa de cada caso.
 - **Cuenta atrás al reanudar**: 0–4 pulsos. Al empezar, las notas esperan a que termine la cuenta atrás inicial y después comienzan a caer.
 - **HUD inferior**: “Ahora”, barra de avance y “Siguiente”. Durante los silencios “Ahora” queda vacío y “Siguiente” salta al siguiente sonido real.
 - **Cabecera oculta y HUD inferior**: durante la reproducción la cabecera desaparece para dejar ver la caída de notas y un botón circular flotante en la parte superior permite mostrarla de nuevo durante unos segundos. Permanece visible durante la cuenta atrás inicial y se pliega al terminar. El tiempo, “Ahora” y “Siguiente” se muestran siempre abajo, con fondo semitransparente.
-- **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Admite varios dedos a la vez. Los carriles y teclas solo se iluminan con la pulsación manual (touch o teclado), no con la reproducción automática; la línea de golpe es fija. El círculo destino de cada carril se ilumina automáticamente cuando la nota entra en él, como guía de timing.
-- **Aciertos tipo Guitar Hero**: si tocas la tecla correcta en el momento de la nota aparece un burst de luz y partículas. Perfecto (±60 ms) muestra **PERFECTO** en dorado; bien (±130 ms) muestra **BIEN** en cian. Solo cuenta la primera pulsación manual de cada nota; no hay puntuación ni combo.
+- **Línea de golpe al 2/3** de la altura (un tercio desde abajo): deja espacio inferior para los dedos y debajo se dibuja una kalimba con cuerpo de madera, puente y tinas de distinta longitud; la central es la más larga y va marcada en ámbar. Toca cualquier punto de la columna visible para tocar esa nota con los dedos, sin kalimba ni teclado físico. Si tocas el hueco central entre dos teclas adyacentes y ambas forman parte del mismo acorde, se pulsan las dos a la vez; en el resto de casos solo suena la tecla que coincide o la más cercana. Así puedes hacer un acorde de dos teclas contiguas con un dedo y añadir otra tecla lejana con otro dedo. Admite varios dedos a la vez. Los carriles y teclas solo se iluminan con la pulsación manual (touch o teclado), no con la reproducción automática; la línea de golpe es fija. El círculo destino de cada carril se ilumina con un halo y un anillo brillante cuando la nota entra en él, como guía de timing.
+- **Aciertos tipo Guitar Hero**: si tocas la tecla correcta en el momento de la nota aparece un burst de luz y partículas. Perfecto (±60 ms) muestra **PERFECTO** en dorado; bien (±130 ms) muestra **BIEN** en cian. Solo cuenta la primera pulsación manual de cada nota.
+- **Puntuación**: cada nota de la canción (o de un acorde) se juzga una vez. El resumen aparece solo en pausa y al terminar, como una pastilla lateral con los contadores de perfectos, bien y fallos, el **acierto neto** y la **precisión ponderada**. El acierto neto es `(perfectos + bien) / notas juzgadas`; la precisión ponderada vale 100 por perfecto, 50 por bien y 0 por fallo. Las notas no pulsadas cuentan como fallo cuando termina su ventana de ±130 ms; las pulsaciones fuera de tiempo no penalizan. La pantalla de pausa está compactada para que los botones se vean sin hacer scroll. Cambiar de tamaño, reiniciar, hacer seek o completar una vuelta del loop reinicia la puntuación; pausar o cambiar el tempo la conservan.
 - **Wake Lock**: intenta mantener la pantalla encendida.
 
 Atajos:
@@ -546,7 +547,7 @@ Abre **Configurar MIDI** o **Configurar partitura** desde **“Listo para tocar�
 ## Limitaciones actuales
 
 - Sin backend, sin cuentas y sin sincronización.
-- Sin detección por micrófono ni puntuación de pulsaciones.
+- Sin detección por micrófono. La puntuación es local a la sesión del reproductor y no se guarda.
 - Sin cámara/AR; la calibración es visual.
 - Sin editor gráfico de tabs; se editan como texto/JSON.
 - Sin layouts alternativos ni kalimbas cromáticas.
