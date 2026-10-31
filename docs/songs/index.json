@@ -273,7 +273,7 @@
       "title": "My Neighbor Totoro - Path of the Wind",
       "artist": "Joe Hisaishi",
       "group": "Studio Ghibli",
-      "midi": "studio_ghibli/my_neighbor_totoro_path_of_the_wind.mid"
+      "midi": "studio_ghibli/the_path_of_the_wind_my_neighbor_totoro_joe_hisaishi.mid"
     },
     {
       "id": "street-fighter-ryus-theme",
@@ -302,6 +302,20 @@
       "artist": "Gareth Coker",
       "group": "Ori and the Blind Forest",
       "midi": "ori_and_the_blind_forest/ori_and_the_blind_forest_main_theme.mid"
+    },
+    {
+      "id": "zelda-ocarina-title-theme",
+      "title": "Ocarina of Time - Title Theme",
+      "artist": "Koji Kondo",
+      "group": "The Legend of Zelda",
+      "midi": "the_legend_of_zelda/title_theme_the_legend_of_zelda_ocarina_of_time.mid"
+    },
+    {
+      "id": "zelda-ocarina-lost-woods",
+      "title": "Ocarina of Time - Lost Woods",
+      "artist": "Koji Kondo",
+      "group": "The Legend of Zelda",
+      "midi": "the_legend_of_zelda/zelda_ocarina_of_time_lost_woods.mid"
     }
   ]
 }
