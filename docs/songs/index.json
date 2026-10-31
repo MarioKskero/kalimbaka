@@ -227,13 +227,6 @@
       "midi": "metallica/metallica_nothing_else_matters.mid"
     },
     {
-      "id": "metallica-one",
-      "title": "Metallica - One",
-      "artist": "Metallica",
-      "group": "Metallica",
-      "midi": "metallica/metallica_one.mid"
-    },
-    {
       "id": "metallica-the-unforgiven",
       "title": "Metallica - The Unforgiven",
       "artist": "Metallica",
@@ -316,6 +309,83 @@
       "artist": "Koji Kondo",
       "group": "The Legend of Zelda",
       "midi": "the_legend_of_zelda/zelda_ocarina_of_time_lost_woods.mid"
+    },
+    {
+      "id": "tom-odell-another-love",
+      "title": "Tom Odell - Another Love",
+      "artist": "Tom Odell",
+      "group": "Tom Odell",
+      "midi": "tom_odell/tom_odell_another_love.mid"
+    },
+    {
+      "id": "alphaville-big-in-japan",
+      "title": "Alphaville - Big in Japan",
+      "artist": "Alphaville",
+      "group": "Alphaville",
+      "midi": "alphaville/alphaville_big_in_japan.mid"
+    },
+    {
+      "id": "robert-miles-children",
+      "title": "Robert Miles - Children",
+      "artist": "Robert Miles",
+      "group": "Robert Miles",
+      "midi": "robert_miles/robert_miles_children.mid"
+    },
+    {
+      "id": "ludovico-einaudi-divenire",
+      "title": "Ludovico Einaudi - Divenire",
+      "artist": "Ludovico Einaudi",
+      "group": "Ludovico Einaudi",
+      "midi": "ludovico_einaudi/ludovico_einaudi_divenire.mid"
+    },
+    {
+      "id": "ludovico-einaudi-experience",
+      "title": "Ludovico Einaudi - Experience",
+      "artist": "Ludovico Einaudi",
+      "group": "Ludovico Einaudi",
+      "midi": "ludovico_einaudi/ludovico_einaudi_experience.mid"
+    },
+    {
+      "id": "ludovico-einaudi-una-mattina",
+      "title": "Ludovico Einaudi - Una Mattina",
+      "artist": "Ludovico Einaudi",
+      "group": "Ludovico Einaudi",
+      "midi": "ludovico_einaudi/ludovico_einaudi_una_mattina.mid"
+    },
+    {
+      "id": "passenger-let-her-go",
+      "title": "Passenger - Let Her Go",
+      "artist": "Passenger",
+      "group": "Passenger",
+      "midi": "passenger/passenger_let_her_go.mid"
+    },
+    {
+      "id": "evanescence-my-immortal",
+      "title": "Evanescence - My Immortal",
+      "artist": "Evanescence",
+      "group": "Evanescence",
+      "midi": "evanescence/evanescence_my_immortal.mid"
+    },
+    {
+      "id": "simon-and-garfunkel-the-sound-of-silence",
+      "title": "Simon & Garfunkel - The Sound of Silence",
+      "artist": "Simon & Garfunkel",
+      "group": "Simon & Garfunkel",
+      "midi": "simon_and_garfunkel/simon_and_garfunkel_the_sound_of_silence.mid"
+    },
+    {
+      "id": "the-righteous-brothers-unchained-melody",
+      "title": "The Righteous Brothers - Unchained Melody",
+      "artist": "The Righteous Brothers",
+      "group": "The Righteous Brothers",
+      "midi": "the_righteous_brothers/the_righteous_brothers_unchained_melody.mid"
+    },
+    {
+      "id": "judas-priest-angel",
+      "title": "Judas Priest - Angel",
+      "artist": "Judas Priest",
+      "group": "Judas Priest",
+      "midi": "judas_priest/judas_priest_angel.mid"
     }
   ]
 }
