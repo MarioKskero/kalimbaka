@@ -148,20 +148,62 @@
           <h1>Elige una canción</h1>
         </div>
 
-        <label class="search">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8" />
-            <path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-          </svg>
-          <input
-            type="search"
-            placeholder="Buscar por título o artista"
-            autocomplete="off"
-            [value]="query()"
-            (input)="onQueryInput($event)"
-            aria-label="Buscar tabs"
-          />
-        </label>
+        <div class="filters">
+          <label class="search">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8" />
+              <path
+                d="m16 16 4 4"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+            </svg>
+            <input
+              type="search"
+              placeholder="Buscar por título, grupo o artista"
+              autocomplete="off"
+              [value]="query()"
+              (input)="onQueryInput($event)"
+              aria-label="Buscar tabs"
+            />
+          </label>
+
+          <label class="group-filter" [class.group-filter--active]="selectedGroup() !== 'all'">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M3.5 7.5a2 2 0 0 1 2-2h4l1.7 2h7.3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9Z"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <select
+              [value]="selectedGroup()"
+              aria-label="Filtrar por grupo"
+              (change)="onGroupChange($event)"
+            >
+              <option value="all">Todos los grupos</option>
+              @for (name of groupNames(); track name) {
+                <option [value]="name">{{ name }}</option>
+              }
+            </select>
+          </label>
+
+          @if (selectedGroup() !== 'all') {
+            <button class="filter-clear" type="button" (click)="clearGroup()">
+              {{ selectedGroup() }}
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="m7 7 10 10M17 7 7 17"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          }
+        </div>
       </div>
 
       @if (libraryError()) {
@@ -179,21 +221,65 @@
       </div>
 
       @if (filteredSongs().length > 0) {
-        <div class="song-grid">
-          @for (song of filteredSongs(); track song.id) {
-            <app-song-card
-              [song]="song"
-              [selectedSize]="settings().kalimbaSize"
-              (play)="playSong($event)"
-              (view)="openTabViewer($event)"
-              (remove)="removeSong($event)"
-            />
+        <div class="group-list">
+          @for (group of songGroups(); track group.name) {
+            <section class="group" [class.group--collapsed]="isGroupCollapsed(group.name)">
+              <button
+                class="group__header"
+                type="button"
+                [attr.aria-expanded]="!isGroupCollapsed(group.name)"
+                (click)="toggleGroup(group.name)"
+              >
+                <svg class="group__folder" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M3.5 7.5a2 2 0 0 1 2-2h4l1.7 2h7.3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9Z"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                <span class="group__name">{{ group.name }}</span>
+                <span class="tag">{{ group.songs.length }}</span>
+                <svg class="group__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="m8 10 4 4 4-4"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+
+              @if (!isGroupCollapsed(group.name)) {
+                <div class="song-grid">
+                  @for (song of group.songs; track song.id) {
+                    <app-song-card
+                      [song]="song"
+                      [selectedSize]="settings().kalimbaSize"
+                      (play)="playSong($event)"
+                      (view)="openTabViewer($event)"
+                      (remove)="removeSong($event)"
+                    />
+                  }
+                </div>
+              }
+            </section>
           }
         </div>
       } @else if (!ready()) {
         <div class="empty">
           <span class="spinner" aria-hidden="true"></span>
           <p>Cargando tabs de ejemplo…</p>
+        </div>
+      } @else if (songs().length > 0) {
+        <div class="empty">
+          <div class="empty__icon" aria-hidden="true">♪</div>
+          <h2>Sin resultados</h2>
+          <p>Prueba con otro título o quita los filtros.</p>
+          <button class="btn btn--ghost" type="button" (click)="clearFilters()">
+            Quitar filtros
+          </button>
         </div>
       } @else {
         <div class="empty">

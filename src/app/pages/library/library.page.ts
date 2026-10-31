@@ -26,6 +26,27 @@ interface StatusMessage {
   text: string;
 }
 
+interface SongGroup {
+  name: string;
+  songs: Song[];
+}
+
+const NO_GROUP = 'Sin grupo';
+
+function groupName(song: Song): string {
+  return song.group?.trim() || song.artist?.trim() || NO_GROUP;
+}
+
+function compareGroupNames(a: string, b: string): number {
+  if (a === NO_GROUP) {
+    return 1;
+  }
+  if (b === NO_GROUP) {
+    return -1;
+  }
+  return a.localeCompare(b, 'es', { sensitivity: 'base' });
+}
+
 @Component({
   selector: 'app-library-page',
   imports: [
@@ -58,6 +79,8 @@ export class LibraryPage {
   readonly libraryError = this.library.error;
 
   readonly query = signal('');
+  readonly selectedGroup = signal('all');
+  private readonly collapsedGroups = signal<ReadonlySet<string>>(new Set());
   readonly showImport = signal(false);
   readonly showHelp = signal(false);
   readonly showCalibration = signal(false);
@@ -66,18 +89,45 @@ export class LibraryPage {
   readonly status = signal<StatusMessage | null>(null);
 
   readonly layout = computed(() => getLayout(this.settings().kalimbaSize));
-  readonly currentCalibration = this.calibrationService.calibration;
+  readonly currentCalibration = computed(() =>
+    this.calibrationService.calibrationFor(this.layout().size),
+  );
+  readonly groupNames = computed(() => {
+    const names = new Set(this.songs().map((song) => groupName(song)));
+    return [...names].sort(compareGroupNames);
+  });
   readonly filteredSongs = computed(() => {
     const query = this.query().trim().toLowerCase();
-    const songs = this.songs();
-    if (!query) {
-      return songs;
-    }
-    return songs.filter(
-      (song) =>
+    const group = this.selectedGroup();
+    return this.songs().filter((song) => {
+      const name = groupName(song);
+      if (group !== 'all' && name !== group) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return (
         song.title.toLowerCase().includes(query) ||
-        (song.artist?.toLowerCase().includes(query) ?? false),
-    );
+        (song.artist?.toLowerCase().includes(query) ?? false) ||
+        name.toLowerCase().includes(query)
+      );
+    });
+  });
+  readonly songGroups = computed<SongGroup[]>(() => {
+    const groups = new Map<string, Song[]>();
+    for (const song of this.filteredSongs()) {
+      const name = groupName(song);
+      const list = groups.get(name);
+      if (list) {
+        list.push(song);
+      } else {
+        groups.set(name, [song]);
+      }
+    }
+    return [...groups.entries()]
+      .map(([name, songs]) => ({ name, songs }))
+      .sort((a, b) => compareGroupNames(a.name, b.name));
   });
   readonly importedCount = computed(() => this.songs().filter((song) => !song.builtIn).length);
   readonly demoCount = computed(() => this.songs().filter((song) => song.builtIn).length);
@@ -96,6 +146,35 @@ export class LibraryPage {
 
   onQueryInput(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
+  }
+
+  onGroupChange(event: Event): void {
+    this.selectedGroup.set((event.target as HTMLSelectElement).value);
+  }
+
+  clearGroup(): void {
+    this.selectedGroup.set('all');
+  }
+
+  clearFilters(): void {
+    this.query.set('');
+    this.selectedGroup.set('all');
+  }
+
+  isGroupCollapsed(name: string): boolean {
+    return this.collapsedGroups().has(name);
+  }
+
+  toggleGroup(name: string): void {
+    this.collapsedGroups.update((current) => {
+      const next = new Set(current);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
   }
 
   openImport(): void {
@@ -209,9 +288,8 @@ export class LibraryPage {
   }
 
   saveCalibration(calibration: Calibration): void {
-    this.calibrationService.set(calibration);
+    this.calibrationService.set(calibration, this.layout().size);
     this.showCalibration.set(false);
-    this.notify('ok', 'Calibración general guardada.');
   }
 
   closeCalibration(): void {

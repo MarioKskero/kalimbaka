@@ -5,6 +5,7 @@ export interface Song {
   id: string;
   title: string;
   artist?: string;
+  group?: string;
   bpm: number;
   kalimbaSize: KalimbaSize;
   tabText: string;
@@ -20,6 +21,7 @@ export interface ImportSongInput {
   tabText: string;
   title?: string;
   artist?: string;
+  group?: string;
   bpm?: number;
   kalimbaSize?: KalimbaSize;
 }
@@ -27,6 +29,7 @@ export interface ImportSongInput {
 export interface MidiImportSongInput {
   title: string;
   artist?: string;
+  group?: string;
   bpm: number;
   kalimbaSize: KalimbaSize;
   midi: MidiSongData;

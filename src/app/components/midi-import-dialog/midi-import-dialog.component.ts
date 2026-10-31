@@ -289,7 +289,7 @@ export class MidiImportDialogComponent implements OnInit {
       notes: part.notes,
       trackId: part.id,
       trackName: part.name,
-      channel: this.isMusicXml() ? undefined : part.channel,
+      channel: this.isMusicXml() || part.kind === 'merged' ? undefined : part.channel,
       instrument: part.instrument,
       reduction: this.reduction(),
     };

@@ -139,7 +139,13 @@ export class CalibrationViewComponent implements AfterViewInit, OnDestroy {
   }
 
   reset(): void {
-    this.draftState.set({ ...DEFAULT_CALIBRATION });
+    this.draftState.update((calibration) =>
+      clampCalibration({
+        ...calibration,
+        scale: DEFAULT_CALIBRATION.scale,
+        offsetX: DEFAULT_CALIBRATION.offsetX,
+      }),
+    );
   }
 
   save(): void {

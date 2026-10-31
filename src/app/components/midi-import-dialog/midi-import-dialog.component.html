@@ -136,9 +136,7 @@
               <span class="field__label">{{
                 isMusicXml() ? 'Pentagramas y pistas' : 'Pistas del MIDI'
               }}</span>
-              <span class="tag">
-                {{ parts().length }} {{ isMusicXml() ? 'opciones' : 'melódicas' }}
-              </span>
+              <span class="tag">{{ parts().length }} opciones</span>
             </div>
 
             @if (ignoredDrums() > 0) {
@@ -159,7 +157,7 @@
                   <strong>{{ part.name }}</strong>
                   <span>
                     {{ part.instrument }}
-                    @if (!isMusicXml()) {
+                    @if (!isMusicXml() && part.kind !== 'merged') {
                       · {{ channelLabel(part) }}
                     }
                   </span>
@@ -188,8 +186,13 @@
           @if (selectedPart(); as part) {
             @if (part.kind === 'merged') {
               <p class="notice">
-                Se cargan todos los pentagramas. Con <strong>Quitar acordes</strong> se conserva la
-                nota más aguda de cada grupo.
+                @if (isMusicXml()) {
+                  Se cargan todos los pentagramas. Con <strong>Quitar acordes</strong> se conserva
+                  la nota más aguda de cada grupo.
+                } @else {
+                  Se unen las dos pistas de piano (ambas manos) respetando su posición temporal. Con
+                  <strong>Quitar acordes</strong> se conserva la nota más aguda de cada grupo.
+                }
               </p>
             }
             <div class="preview">

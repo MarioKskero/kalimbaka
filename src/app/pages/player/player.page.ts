@@ -252,7 +252,9 @@ export class PlayerPage implements OnDestroy {
       eventsPerBeat: this.parsed()?.metadata.eventsPerBeat ?? 1,
     });
   });
-  readonly currentCalibration = this.calibrationService.calibration;
+  readonly currentCalibration = computed(() =>
+    this.calibrationService.calibrationFor(this.layout().size),
+  );
   readonly recommended = computed(() => {
     const midi = this.midiData();
     if (midi) {
@@ -981,9 +983,8 @@ export class PlayerPage implements OnDestroy {
   }
 
   saveCalibration(calibration: Calibration): void {
-    this.calibrationService.set(calibration);
+    this.calibrationService.set(calibration, this.layout().size);
     this.showCalibration.set(false);
-    this.showPause.set(true);
   }
 
   closeCalibration(): void {

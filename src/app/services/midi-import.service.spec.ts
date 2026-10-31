@@ -17,6 +17,7 @@ describe('MidiImportService', () => {
     const bass = midi.addTrack();
     bass.name = 'Bass';
     bass.channel = 1;
+    bass.instrument.number = 32;
     bass.addNote({ midi: 40, time: 0, duration: 1 });
 
     const drums = midi.addTrack();
@@ -36,7 +37,36 @@ describe('MidiImportService', () => {
 
     const selected = analysis.parts.find((part) => part.id === analysis.suggestedPartId);
     expect(selected?.name).toBe('Melody');
+    expect(analysis.parts.some((part) => part.kind === 'merged')).toBe(false);
   });
+
+  it('ofrece unir dos pistas de piano respetando su posición temporal', () => {
+    const midi = new Midi();
+    midi.header.setTempo(120);
+
+    const left = midi.addTrack();
+    left.name = 'Izquierda';
+    left.channel = 0;
+    left.addNote({ midi: 48, time: 0, duration: 1 });
+
+    const right = midi.addTrack();
+    right.name = 'Derecha';
+    right.channel = 0;
+    right.addNote({ midi: 48, time: 0, duration: 1 });
+    right.addNote({ midi: 60, time: 1, duration: 1 });
+
+    const analysis = new MidiImportService().analyze(
+      midi.toArray().buffer as ArrayBuffer,
+      'piano.mid',
+    );
+    const merged = analysis.parts.find((part) => part.kind === 'merged');
+
+    expect(merged?.name).toBe('Ambas manos');
+    expect(merged?.notes.map((note) => note.midi)).toEqual([48, 60]);
+    expect(merged?.notes.map((note) => note.startMs)).toEqual([0, 1000]);
+    expect(analysis.suggestedPartId).not.toBe(merged?.id);
+  });
+
   it('recorta el silencio inicial de cada pista', () => {
     const midi = new Midi();
     midi.header.setTempo(120);
@@ -53,5 +83,4 @@ describe('MidiImportService', () => {
     expect(part?.notes.map((note) => note.startMs)).toEqual([0, 500]);
     expect(part?.notes.map((note) => note.midi)).toEqual([64, 66]);
   });
-
 });

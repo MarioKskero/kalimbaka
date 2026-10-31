@@ -23,6 +23,7 @@ interface BuiltInEntry {
   id: string;
   title?: string;
   artist?: string;
+  group?: string;
   bpm?: number;
   kalimba?: number;
   file?: string;
@@ -37,6 +38,7 @@ interface BuiltInIndex {
 interface JsonSong {
   title?: string;
   artist?: string;
+  group?: string;
   bpm?: number;
   kalimba?: number;
   kalimbaSize?: number;
@@ -162,6 +164,10 @@ function makeId(): string {
     return `user-${crypto.randomUUID()}`;
   }
   return `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function encodeSongPath(filePath: string): string {
+  return filePath.split('/').map(encodeURIComponent).join('/');
 }
 
 function titleFromFileName(name: string): string {
@@ -327,6 +333,7 @@ export class SongLibraryService {
       id: makeId(),
       title: input.title?.trim() || parsed.metadata.title || 'Tab sin título',
       artist: input.artist?.trim() || parsed.metadata.artist,
+      group: input.group?.trim() || undefined,
       bpm: clampBpm(input.bpm ?? parsed.metadata.bpm ?? this.settings.settings().defaultBpm),
       kalimbaSize: size ?? this.settings.settings().kalimbaSize,
       tabText: input.tabText,
@@ -366,6 +373,7 @@ export class SongLibraryService {
   importMidiDraft(input: {
     title: string;
     artist?: string;
+    group?: string;
     bpm?: number;
     kalimbaSize?: KalimbaSize;
     midiSource: string;
@@ -376,6 +384,7 @@ export class SongLibraryService {
       id: makeId(),
       title: input.title.trim() || 'MIDI importado',
       artist: input.artist?.trim() || undefined,
+      group: input.group?.trim() || undefined,
       bpm: clampBpm(input.bpm ?? settings.defaultBpm),
       kalimbaSize: input.kalimbaSize ?? settings.kalimbaSize,
       tabText: '',
@@ -395,6 +404,7 @@ export class SongLibraryService {
       id: makeId(),
       title: input.title.trim() || 'MIDI importado',
       artist: input.artist?.trim() || undefined,
+      group: input.group?.trim() || undefined,
       bpm: clampBpm(input.bpm),
       kalimbaSize: input.kalimbaSize,
       tabText: '',
@@ -474,6 +484,7 @@ export class SongLibraryService {
       songs: this.importedState().map((song) => ({
         title: song.title,
         artist: song.artist,
+        group: song.group,
         bpm: song.bpm,
         kalimbaSize: song.kalimbaSize,
         tabText: song.tabText,
@@ -567,7 +578,7 @@ export class SongLibraryService {
       if (!sourceFile) {
         throw new Error(`La canción ${entry.id} no tiene archivo`);
       }
-      const sourceResponse = await fetch(`songs/${encodeURIComponent(sourceFile)}?v=${cacheBust}`, {
+      const sourceResponse = await fetch(`songs/${encodeSongPath(sourceFile)}?v=${cacheBust}`, {
         cache: 'no-store',
       });
       if (!sourceResponse.ok) {
@@ -584,6 +595,7 @@ export class SongLibraryService {
         id: entry.id,
         title: entry.title ?? analysis.title,
         artist: entry.artist ?? analysis.artist,
+        group: entry.group,
         bpm: saved?.bpm ?? clampBpm(analysis.bpm),
         kalimbaSize: saved?.kalimbaSize ?? settings.kalimbaSize,
         tabText: '',
@@ -599,7 +611,7 @@ export class SongLibraryService {
       throw new Error(`La canción ${entry.id} no tiene archivo`);
     }
 
-    const tabResponse = await fetch(`songs/${encodeURIComponent(entry.file)}?v=${cacheBust}`, {
+    const tabResponse = await fetch(`songs/${encodeSongPath(entry.file)}?v=${cacheBust}`, {
       cache: 'no-store',
     });
     if (!tabResponse.ok) {
@@ -611,6 +623,7 @@ export class SongLibraryService {
       id: entry.id,
       title: entry.title ?? parsed.metadata.title ?? 'Canción',
       artist: entry.artist,
+      group: entry.group,
       bpm: clampBpm(entry.bpm ?? parsed.metadata.bpm ?? this.settings.settings().defaultBpm),
       kalimbaSize: isKalimbaSize(entry.kalimba)
         ? entry.kalimba
@@ -656,6 +669,7 @@ function importJsonSongs(
       const song = library.importMidi({
         title: json.title ?? titleFromFileName(fileName),
         artist: json.artist,
+        group: json.group,
         bpm: typeof json.bpm === 'number' ? json.bpm : json.midi.bpm,
         kalimbaSize: isKalimbaSize(sizeValue) ? sizeValue : 17,
         midi: json.midi,
@@ -674,6 +688,7 @@ function importJsonSongs(
       const song = library.importMidiDraft({
         title: json.title ?? titleFromFileName(fileName),
         artist: json.artist,
+        group: json.group,
         bpm: typeof json.bpm === 'number' ? json.bpm : undefined,
         kalimbaSize: isKalimbaSize(sizeValue) ? sizeValue : undefined,
         midiSource: json.midiSource,
@@ -697,6 +712,7 @@ function importJsonSongs(
       tabText,
       title: json.title ?? titleFromFileName(fileName),
       artist: json.artist,
+      group: json.group,
       bpm: typeof json.bpm === 'number' ? json.bpm : undefined,
       kalimbaSize: isKalimbaSize(sizeValue) ? sizeValue : undefined,
     });

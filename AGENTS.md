@@ -81,6 +81,7 @@ interface Song {
   id: string;
   title: string;
   artist?: string;
+  group?: string; // grupo/franquicia para agrupar en la biblioteca
   bpm: number;
   kalimbaSize: 8 | 17 | 21;
   tabText: string;
@@ -93,6 +94,7 @@ interface Song {
 }
 ```
 
+- `Song.group` es el grupo/franquicia visible en la biblioteca (p. ej. `Hollow Knight`, `Imagine Dragons`), independiente de `artist`. Si falta, la biblioteca usa `artist`; si tampoco hay, `Sin grupo`.
 - Para canciones MIDI/MusicXML configuradas, `midi` existe y `tabText` es `''`.
 - Para pistas pendientes de configurar, `midiSource` existe y `midi` es `undefined`. El reproductor debe abrir el diálogo de configuración antes de construir el timeline.
 - `Song.kalimbaSize` es el tamaño guardado con la configuración de la pista. En pistas configuradas, el reproductor usa ese tamaño; en texto, `settings.kalimbaSize`.
@@ -133,6 +135,10 @@ interface MidiReduction {
 
 ## 7. Catálogo `public/songs/index.json`
 
+- Fuente de verdad para canciones: **solo `public/songs/`**.
+- Cada archivo vive en la carpeta de su `group`, con slug ASCII en minúsculas (`hollow_knight/`, `imagine_dragons/`, `clasica/`, `studio_ghibli/`). Las canciones sin grupo claro o sin etiquetar van a `varios/`.
+- Cuando se pida actualizar/añadir/renombrar canciones, ignora `docs/songs/` (build publicado); no lo edites ni lo uses como referencia salvo petición explícita.
+
 ### Texto
 
 ```json
@@ -140,11 +146,14 @@ interface MidiReduction {
   "id": "song",
   "title": "Song",
   "artist": "Artist",
+  "group": "Grupo",
   "bpm": 84,
   "kalimba": 17,
-  "file": "song.txt"
+  "file": "grupo/song.txt"
 }
 ```
+
+- `group` es el directorio/grupo donde aparece la canción en la biblioteca. Es independiente de `artist`: por ejemplo, todas las piezas de un videojuego comparten `group` aunque tengan compositores distintos. Si se omite, se usa `artist`.
 
 ### MIDI
 
@@ -153,7 +162,8 @@ interface MidiReduction {
   "id": "song-midi",
   "title": "Song (MIDI)",
   "artist": "Artist",
-  "midi": "song.mid"
+  "group": "Grupo",
+  "midi": "grupo/song.mid"
 }
 ```
 
@@ -169,17 +179,20 @@ interface MidiReduction {
   "id": "song-musicxml",
   "title": "Song (MusicXML)",
   "artist": "Composer",
-  "musicxml": "song.mxl"
+  "group": "Grupo",
+  "musicxml": "grupo/song.mxl"
 }
 ```
 
 - `musicxml` o `file` con extensión `.musicxml`/`.xml`/`.mxl`.
 - Las entradas MusicXML tampoco fijan pista ni configuración; la app genera una pista por pentagrama y, si hay varios, una fusión **Ambas manos**.
 - `loadBuiltIns` aísla errores por entrada: una demo inexistente o inválida se omite en silencio y no tumba el resto. Aun así, valida archivos e IDs.
+- La biblioteca muestra secciones plegables por `group` (directorios) y permite filtrar por ese grupo; el buscador también busca en título, artista y grupo.
 
 ### Nombres de archivo
 
 - Usa slugs ASCII en minúsculas con letras, números y `_` (`aerosmith_dream_on.mid`).
+- La carpeta es el slug del `group`; si no hay grupo claro, usa `varios/`. Las rutas del índice incluyen la carpeta (`hollow_knight/hollow_knight_hornet.mid`).
 - Incluye el grupo/artista real y el título, o solo el título si no hay artista claro.
 - Evita espacios, guiones, apóstrofes, acentos y signos como `?`, `(`, `)` o `¿`.
 - Los `title` y `artist` visibles pueden conservar mayúsculas, acentos y puntuación.
@@ -259,6 +272,7 @@ Orden:
 
 - `MidiImportService` separa pistas/canales con @tonejs/midi.
 - Se ignora percusión en el diálogo (canal 9 zero-based).
+- Si hay exactamente dos pistas melódicas de piano, se añade una pista sintética **Ambas manos** (`midi:merge`) que las une respetando su posición temporal y deduplicando unísonos. No se preselecciona como melodía. El ID es determinista para recuperar la configuración guardada.
 - Se sugiere melodía por altura media, número de notas, monofonía e instrumento y se preselecciona al configurar la canción; el usuario puede cambiarla.
 - El catálogo MIDI no fija pista.
 
@@ -320,10 +334,11 @@ Claves:
 
 Calibración:
 
-- global para todas las canciones y tamaños (no por tamaño de kalimba);
+- horizontal (ancho y `offsetX`) **por tamaño de kalimba**; `offsetY` (altura de la línea de notas) **global** para todos los tamaños y canciones;
 - ancho inicial del 90% (`scale: 0.9`), `−/+` escala, arrastre para offset, reset;
+- `Centrar` resetea el ancho y el centrado horizontal del tamaño actual sin mover la altura global;
 - offsets normalizados;
-- migra el formato antiguo por tamaño conservando la calibración personalizada;
+- migra el formato antiguo global y el antiguo por tamaño;
 - no hay cámara/AR.
 
 ## 13. Visor y exportación
@@ -370,21 +385,21 @@ La UI/canvas no tiene tests automatizados. Para cambios visuales, prueba manualm
 
 ### Añadir una canción de texto
 
-1. Crear `public/songs/<id>.txt` con metadatos y notas.
+1. Crear `public/songs/<grupo>/<id>.txt` con metadatos y notas.
 2. Añadir entrada con `file` a `index.json`.
 3. Recargar y probar.
 
 ### Añadir una canción MIDI
 
-1. Copiar `.mid` a `public/songs/`.
-2. Añadir entrada con `id`, `title`, `artist` y `midi` (sin pista, transposición ni reducción).
+1. Copiar `.mid` a `public/songs/<grupo>/`.
+2. Añadir entrada con `id`, `title`, `artist`, `group` y `midi` (sin pista, transposición ni reducción).
 3. Verificar que el MIDI se parsea. La pista y la configuración se eligen al pulsar Jugar.
 4. Recargar, configurar la demo y comprobar el informe de reducción.
 
 ### Añadir una canción MusicXML
 
-1. Copiar `.musicxml`, `.xml` o `.mxl` a `public/songs/`.
-2. Añadir entrada con `id`, `title`, `artist` y `musicxml` (sin pista, transposición ni reducción).
+1. Copiar `.musicxml`, `.xml` o `.mxl` a `public/songs/<grupo>/`.
+2. Añadir entrada con `id`, `title`, `artist`, `group` y `musicxml` (sin pista, transposición ni reducción).
 3. Verificar que el parser genera pentagramas y la fusión si hay varios.
 4. Recargar, configurar la demo (incluida **Ambas manos**) y comprobar el informe.
 
@@ -428,7 +443,7 @@ La UI/canvas no tiene tests automatizados. Para cambios visuales, prueba manualm
 - No invertir la escala de BPM MIDI.
 - No añadir líneas en blanco accidentales a tabs generados.
 - No contar notas de acordes eliminados como “omitidas” en los avisos de pérdida.
-- La calibración es global; no volver a indexarla por tamaño de kalimba.
+- La calibración horizontal (ancho y `offsetX`) es por tamaño de kalimba; `offsetY` es global. No vuelvas a compartir el centrado horizontal entre tamaños.
 - No intentar conservar cromatismos exactos en una kalimba C major: es imposible sin retunear.
 - `Song.tabText` vacío es normal en MIDI/MusicXML; bifurca por `song.midi` y `song.midiSource`.
 - Una pista sin configurar tiene `midiSource` pero no `midi`; el reproductor debe abrir la configuración y no mostrar “tab sin notas”.

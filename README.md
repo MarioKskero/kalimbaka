@@ -96,6 +96,8 @@ Al cambiar archivos de `public/songs`, `public/songs/index.json` o los propios M
 En la biblioteca puedes:
 
 - cambiar el tamaño de kalimba;
+- navegar por las canciones agrupadas en directorios por grupo/franquicia (Hollow Knight, Imagine Dragons, etc.);
+- buscar por título, artista o grupo, y filtrar por grupo;
 - importar tabs de texto, MIDI o MusicXML con el botón **Importar**;
 - calibrar;
 - abrir la guía de uso;
@@ -205,13 +207,16 @@ Las demos integradas están en `public/songs/` y se listan en `public/songs/inde
   "id": "mi-cancion",
   "title": "Mi canción",
   "artist": "Autor",
+  "group": "Grupo",
   "bpm": 84,
   "kalimba": 17,
-  "file": "mi_cancion.txt"
+  "file": "mi_grupo/mi_cancion.txt"
 }
 ```
 
-El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm` y `kalimba` del índice tienen prioridad sobre los del archivo.
+El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `group`, `bpm` y `kalimba` del índice tienen prioridad sobre los del archivo.
+
+`group` es el directorio/grupo con el que la canción aparece en la biblioteca (por ejemplo, `Hollow Knight`, `Imagine Dragons`, `Studio Ghibli`). Es independiente de `artist`: varias canciones de un mismo grupo pueden tener autores distintos. Si se omite, se usa el `artist`; si tampoco hay, se agrupan en `Sin grupo`.
 
 ### Canción MIDI
 
@@ -220,12 +225,14 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
   "id": "mi-cancion-midi",
   "title": "Mi canción (MIDI)",
   "artist": "Autor",
-  "midi": "mi_cancion.mid"
+  "group": "Grupo",
+  "midi": "mi_grupo/mi_cancion.mid"
 }
 ```
 
 - `midi`: nombre del archivo dentro de `public/songs/`. También puedes usar `file` con extensión `.mid`/`.midi`.
 - La entrada **no fija** pista, tamaño, BPM, transposición ni reducción. La app analiza el archivo y, la primera vez que pulses **Jugar**, abre el diálogo de configuración con el tamaño base del usuario, el BPM original del MIDI y la reducción recomendada (octavas, cromatismos y solo melodía).
+- En MIDIs de piano con dos pistas, el diálogo añade la opción **Ambas manos** para unir las dos pistas respetando su posición temporal.
 - La configuración elegida se guarda por canción y se muestra en **“Listo para tocar”**, donde también se puede cambiar.
 - En las demos MIDI, `title` y `artist` del índice siguen teniendo prioridad.
 
@@ -236,7 +243,8 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
   "id": "mi-partitura",
   "title": "Mi partitura",
   "artist": "Compositor",
-  "musicxml": "mi_partitura.mxl"
+  "group": "Grupo",
+  "musicxml": "mi_grupo/mi_partitura.mxl"
 }
 ```
 
@@ -249,8 +257,8 @@ El archivo `.txt` contiene el tab con sus metadatos. El `title`, `artist`, `bpm`
 
 ### Añadir una canción
 
-1. Copia el `.txt`, `.mid`, `.musicxml`, `.xml` o `.mxl` en `public/songs/`.
-2. Añade su entrada a `public/songs/index.json`.
+1. Copia el `.txt`, `.mid`, `.musicxml`, `.xml` o `.mxl` en la carpeta de su grupo dentro de `public/songs/` (`hollow_knight/`, `imagine_dragons/`, `clasica/`…). Si no hay un grupo claro, usa `varios/`.
+2. Añade su entrada a `public/songs/index.json`, con `group` y la ruta que incluye la carpeta.
 3. Recarga la app.
 
 Los nombres de archivo de las demos deben ser slugs ASCII en minúsculas, con letras, números y `_` (`aerosmith_dream_on.mid`, `monkey_island_theme.mid`). Incluye el grupo/artista real y el título, o solo el título cuando no haya un artista claro. Evita espacios, guiones, apóstrofes, acentos y signos como `?`, `(` o `¿`; los títulos y artistas visibles sí pueden conservarlos. No uses el `artist` del catálogo cuando sea solo el arreglista o subidor.
@@ -279,7 +287,7 @@ El MIDI se guarda con su fuente original para poder reconfigurarlo y, una vez co
 
 ### Comportamiento
 
-- Se importa **una pista/canal** a la vez.
+- Se importa **una pista/canal** a la vez, salvo la opción **Ambas manos** para MIDIs de piano de dos pistas.
 - La percusión se ignora.
 - Se recorta el silencio inicial de la pista (la primera nota pasa a 0).
 - Se conservan tiempos y duraciones reales.
@@ -392,8 +400,8 @@ Atajos:
 
 - Ancho inicial del **90%**; botones **− / +** para escalarlo.
 - Arrastrar para recolocar la guía.
-- Botón **Centrar** para resetear al ancho y posición por defecto.
-- Es un ajuste **global**: se comparte entre todas las canciones y tamaños de kalimba.
+- Botón **Centrar** para resetear el ancho y el centrado horizontal del tamaño actual.
+- El **ancho** y el **centrado horizontal** se guardan por tamaño de kalimba, para que no se desplacen al cambiar de distribución; la **altura de la línea** se comparte entre todos los tamaños y canciones.
 - No hay modo cámara/AR.
 
 La idea es alinear los carriles virtuales con las teclas físicas cuando el móvil está en un soporte delante de la kalimba.
@@ -424,7 +432,7 @@ Claves de `localStorage`:
 
 - `kalimbapp.songs.v1`: canciones importadas (texto, MIDI y MusicXML, incluida la fuente original si existe).
 - `kalimbapp.settings.v1`: tamaño, BPM por defecto, articulación, colores por nota/tecla, metrónomo, sonido, loop, teclado, notas visibles y cuenta atrás al reanudar.
-- `kalimbapp.calibration.v1`: calibración global (ancho y offsets), común para todas las canciones y tamaños.
+- `kalimbapp.calibration.v1`: calibración horizontal (ancho y `offsetX`) por tamaño de kalimba y altura de línea (`offsetY`) global, común para todas las canciones.
 - `kalimbapp.keyboard.v1`: mapa de teclado manual.
 - `kalimbapp.builtin-midi.v2`: configuración elegida para las demos MIDI y MusicXML.
 
@@ -555,7 +563,7 @@ Abre **Configurar MIDI** o **Configurar partitura** desde **“Listo para tocar�
 - La pausa de frase es fija: una línea en blanco = un beat.
 - La exportación MIDI→tab es aproximada.
 - Los cambios de tempo internos del MIDI o MusicXML no se reflejan en el metrónomo.
-- La importación MIDI trabaja con una pista/canal; MusicXML permite elegir pentagrama o fusionar las manos.
+- La importación MIDI trabaja con una pista/canal, o con **Ambas manos** en pianos de dos pistas; MusicXML permite elegir pentagrama o fusionar las manos.
 - En un 17 en Do mayor, las notas cromáticas no se pueden conservar exactas.
 - MusicXML solo se acepta en formato partwise; no se importan PDF, imágenes, `.mscz` ni `.gp*` directamente.
 - Las notas de adorno y la percusión no afinada se omiten.
